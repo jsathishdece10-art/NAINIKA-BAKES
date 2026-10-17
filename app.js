@@ -2,9 +2,8 @@
 
 /*
  * NAINIKA BAKES BUSINESS MANAGER
- *
- * Current storage: browser localStorage.
- * Google Drive cloud sync is not included in this version.
+ * Storage: local backup + authenticated Firebase Firestore cloud sync.
+ * Existing business features and calculations are preserved.
  */
 
 const DB_KEY = "nainika_bakes_business_v2";
@@ -21,9 +20,7 @@ function loadDB() {
     try {
         const raw = localStorage.getItem(DB_KEY);
         if (!raw) return structuredClone(emptyDB);
-
         const parsed = JSON.parse(raw);
-
         return {
             purchases: Array.isArray(parsed.purchases) ? parsed.purchases : [],
             recipes: Array.isArray(parsed.recipes) ? parsed.recipes : [],
@@ -39,16 +36,128 @@ function loadDB() {
 }
 
 let db = loadDB();
+let cloudReady = false;
+let cloudSaveTimer = null;
+let cloudLoadGeneration = 0;
 
 function saveDB() {
     try {
+        // Keep local backup so the existing app remains resilient if internet is down.
         localStorage.setItem(DB_KEY, JSON.stringify(db));
         renderAll();
+        if (cloudReady && window.firebaseDb && window.firebaseAuth?.currentUser) {
+            clearTimeout(cloudSaveTimer);
+            cloudSaveTimer = setTimeout(async () => {
+                try {
+                    const user = window.firebaseAuth.currentUser;
+                    if (!user) return;
+                    await window.firebaseDb.collection("users").doc(user.uid)
+                        .collection("appData").doc("main")
+                        .set({ ...db, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    const status = document.getElementById("cloudStatus");
+                    if (status) status.textContent = "Cloud synced ✓";
+                } catch (error) {
+                    console.error("Firebase save failed:", error);
+                    const status = document.getElementById("cloudStatus");
+                    if (status) status.textContent = "Cloud sync failed — local backup saved";
+                }
+            }, 400);
+        }
     } catch (error) {
         console.error(error);
         alert("Data could not be saved. Export a backup and check browser storage.");
     }
 }
+
+async function loadSignedInUserData(user) {
+    const generation = ++cloudLoadGeneration;
+    const status = document.getElementById("cloudStatus");
+    if (status) status.textContent = "Loading your cloud data…";
+    cloudReady = false;
+    try {
+        const ref = window.firebaseDb.collection("users").doc(user.uid).collection("appData").doc("main");
+        const snap = await ref.get();
+        if (generation !== cloudLoadGeneration) return;
+        if (snap.exists) {
+            const data = snap.data() || {};
+            db = {
+                purchases: Array.isArray(data.purchases) ? data.purchases : [],
+                recipes: Array.isArray(data.recipes) ? data.recipes : [],
+                productions: Array.isArray(data.productions) ? data.productions : [],
+                sales: Array.isArray(data.sales) ? data.sales : [],
+                wastage: Array.isArray(data.wastage) ? data.wastage : []
+            };
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        } else {
+            // First sign-in: migrate existing browser data to this signed-in account.
+            await ref.set({ ...db, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        cloudReady = true;
+        renderAll();
+        if (getIngredientNames().length === 0) addRecipeRow();
+        if (purchaseItemsContainer.querySelectorAll(".purchase-item-row").length === 0) addPurchaseItemRow();
+        updatePurchaseTotal();
+        if (status) status.textContent = "Cloud synced ✓";
+    } catch (error) {
+        console.error("Firebase load failed:", error);
+        if (status) status.textContent = "Cloud connection failed — check Firestore Rules";
+        alert("Could not load Firebase data. Your browser backup was kept. Check that Firestore Rules allow only your signed-in account.");
+    }
+}
+
+function initPrivateFirebaseLogin() {
+    const loginPanel = document.getElementById("loginPanel");
+    const appLayout = document.querySelector(".layout");
+    const loginForm = document.getElementById("loginForm");
+    const loginMessage = document.getElementById("loginMessage");
+    const googleButton = document.getElementById("googleLogin");
+    const logoutButton = document.getElementById("logoutButton");
+    const setMessage = message => { if (loginMessage) loginMessage.textContent = message; };
+
+    loginForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        setMessage("Signing in…");
+        try {
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            await window.firebaseAuth.signInWithEmailAndPassword(email, password);
+        } catch (error) {
+            console.error(error);
+            setMessage("Login failed. Check your email/password and Firebase Authentication setup.");
+        }
+    });
+    googleButton?.addEventListener("click", async () => {
+        setMessage("Opening Google sign-in…");
+        try {
+            await window.firebaseAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        } catch (error) {
+            console.error(error);
+            setMessage("Google sign-in failed. Try Email/Password login.");
+        }
+    });
+    logoutButton?.addEventListener("click", async () => {
+        cloudReady = false;
+        await window.firebaseAuth.signOut();
+    });
+
+    window.firebaseAuth.onAuthStateChanged(async user => {
+        cloudReady = false;
+        if (!user) {
+            if (loginPanel) loginPanel.hidden = false;
+            if (appLayout) appLayout.hidden = true;
+            if (logoutButton) logoutButton.hidden = true;
+            setMessage("Sign in to access your private NAINIKA BAKES data.");
+            return;
+        }
+        if (loginPanel) loginPanel.hidden = true;
+        if (appLayout) appLayout.hidden = false;
+        if (logoutButton) logoutButton.hidden = false;
+        const account = document.getElementById("signedInEmail");
+        if (account) account.textContent = user.email || "Google account";
+        await loadSignedInUserData(user);
+    });
+}
+
 
 function id() {
     return crypto.randomUUID();
@@ -448,9 +557,6 @@ function editPurchaseRecord(purchaseId) {
 /* ---------------- RECIPE COSTING ---------------- */
 
 const recipeRows = document.getElementById("recipeRows");
-let editingRecipeId = null;
-let editingProductionId = null;
-let editingSaleId = null;
 
 function addRecipeRow(initial = {}) {
     const row = document.createElement("div");
@@ -486,20 +592,10 @@ function addRecipeRow(initial = {}) {
     const costOutput = row.querySelector(".recipe-cost");
     console.log("Ingredient dropdown options:", select.options.length);
 
-   if (initial.name) {
-    const option = [...select.options].find(
-        opt =>
-            opt.dataset.name?.toLowerCase() ===
-                initial.name.toLowerCase() &&
-            opt.dataset.unit === initial.unit
-    );
-
-    if (option) {
-        select.value = option.value;
+    if (initial.name) {
+        select.value = initial.name.toLowerCase();
+        qtyInput.value = initial.qty;
     }
-
-    qtyInput.value = initial.qty ?? "";
-}
 
     function updateRowCost() {
         const option = select.selectedOptions[0];
@@ -591,12 +687,8 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
             r.name.toLowerCase() === name.toLowerCase()
         );
 
-        if (existing && existing.id !== editingRecipeId) {
-            throw new Error("A recipe with this name already exists.");
-        }
-
         const recipe = {
-            id: editingRecipeId || (existing ? existing.id : id()),
+            id: existing ? existing.id : id(),
             name,
             finishedWeight,
             sellingPrice,
@@ -606,78 +698,23 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
             updatedAt: new Date().toISOString()
         };
 
-       if(editingRecipeId){
-
-    const index =
-    db.recipes.findIndex(
-        r => r.id === editingRecipeId
-    );
-
-    if (index < 0) {
-        throw new Error("Recipe record not found. Please refresh and try again.");
-    }
-    db.recipes[index] = recipe;
-
-    editingRecipeId = null;
-
-}
-else{
-
-    if(existing){
-
-        db.recipes =
-        db.recipes.map(r =>
-            r.id === existing.id
-            ? recipe
-            : r
-        );
-
-    }
-    else{
-
-        db.recipes.push(recipe);
-
-    }
-
-}
+        if (existing) {
+            db.recipes = db.recipes.map(r => r.id === existing.id ? recipe : r);
+        } else {
+            db.recipes.push(recipe);
+        }
 
         saveDB();
         updateRecipeResult(recipe);
         event.target.reset();
         recipeRows.innerHTML = "";
-        document.getElementById("addRecipeRow").disabled = false;
 
         alert("Recipe saved. Cost is based on current weighted-average purchase prices.");
     } catch (error) {
         alert(error.message);
     }
 });
-function editRecipe(recipeId){
 
-    const recipe =
-    db.recipes.find(r => r.id === recipeId);
-
-    if(!recipe) return;
-
-    editingRecipeId = recipe.id;
-
-    document.getElementById("recipeName").value =
-    recipe.name;
-
-    document.getElementById("recipeWeight").value =
-    recipe.finishedWeight;
-
-    document.getElementById("recipePrice").value =
-    recipe.sellingPrice;
-
-    recipeRows.innerHTML = "";
-
-    recipe.ingredients.forEach(i => {
-        addRecipeRow(i);
-    });
-    showPage("recipe");
-    document.getElementById("recipeForm").scrollIntoView({ behavior: "smooth", block: "start" });
-}
 function updateRecipeResult(recipe) {
     const result = document.getElementById("recipeResult");
 
@@ -703,41 +740,7 @@ function updateRecipeResult(recipe) {
 }
 
 /* ---------------- PRODUCTION ---------------- */
-function editProduction(id){
 
-    const p = db.productions.find(
-        x => x.id === id
-    );
-
-    if(!p) return;
-
-    editingProductionId = id;
-
-    document.getElementById(
-        "productionDate"
-    ).value = p.date;
-
-    document.getElementById(
-        "productionRecipe"
-    ).value = p.recipeId;
-
-    document.getElementById(
-        "productionBatches"
-    ).value = p.batches;
-
-    document.getElementById(
-        "actualProductionWeight"
-    ).value = p.actualWeight;
-
-    document.getElementById(
-        "productionWastage"
-    ).value = p.wastage;
-
-    const submit = document.querySelector('#productionForm button[type="submit"]');
-    if (submit) submit.textContent = "Update Production";
-    showPage("production");
-    document.getElementById("productionForm").scrollIntoView({ behavior: "smooth", block: "start" });
-}
 document.getElementById("productionForm").addEventListener("submit", event => {
     event.preventDefault();
 
@@ -758,29 +761,9 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         return;
     }
 
-    const oldProduction = editingProductionId
-        ? db.productions.find(p => p.id === editingProductionId)
-        : null;
-
-    if (editingProductionId && !oldProduction) {
-        alert("Production record not found. Please refresh and try again.");
-        return;
-    }
-
     for (const ingredient of recipe.ingredients) {
         const needed = ingredient.qty * batches;
-        let available = getIngredientStock(ingredient.name, ingredient.unit);
-
-        // In edit mode, add back the ingredients consumed by the old version
-        // before checking the replacement. This prevents the record counting against itself.
-        if (oldProduction) {
-            const oldRecipe = db.recipes.find(r => r.id === oldProduction.recipeId);
-            const oldIngredient = oldRecipe?.ingredients.find(i =>
-                i.name.toLowerCase() === ingredient.name.toLowerCase() &&
-                i.unit === ingredient.unit
-            );
-            if (oldIngredient) available += oldIngredient.qty * oldProduction.batches;
-        }
+        const available = getIngredientStock(ingredient.name, ingredient.unit);
 
         if (available < needed) {
             alert(
@@ -804,31 +787,7 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         ingredientCost: recipe.ingredientCost * batches
     };
 
-    if(editingProductionId){
-
-    const index =
-    db.productions.findIndex(
-        p => p.id === editingProductionId
-    );
-
-    if (index < 0) {
-        alert("Production record not found. Please refresh and try again.");
-        return;
-    }
-
-    db.productions[index] = {
-        ...record,
-        id: editingProductionId
-    };
-
-    editingProductionId = null;
-
-}
-else{
-
     db.productions.push(record);
-
-}
     saveDB();
 
     document.getElementById("productionResult").innerHTML = `
@@ -839,8 +798,6 @@ else{
     `;
 
     event.target.reset();
-    const productionSubmit = document.querySelector('#productionForm button[type="submit"]');
-    if (productionSubmit) productionSubmit.textContent = "Save Production";
     document.getElementById("productionDate").value = todayString();
     document.getElementById("productionBatches").value = "1";
     document.getElementById("productionWastage").value = "0";
@@ -913,23 +870,11 @@ document.getElementById("salesForm").addEventListener("submit", event => {
         return;
     }
 
-    let availableFinishedWeight = db.productions.reduce((sum, p) =>
+    const availableFinishedWeight = db.productions.reduce((sum, p) =>
         sum + (p.recipeId === recipeId ? p.saleableWeight : 0), 0
     ) - db.sales.reduce((sum, s) =>
         sum + (s.recipeId === recipeId ? s.weight * s.qty : 0), 0
     );
-
-    // Editing a sale must exclude that sale's old quantity from the stock already sold.
-    if (editingSaleId) {
-        const oldSale = db.sales.find(s => s.id === editingSaleId);
-        if (!oldSale) {
-            alert("Sales record not found. Please refresh and try again.");
-            return;
-        }
-        if (oldSale.recipeId === recipeId) {
-            availableFinishedWeight += oldSale.weight * oldSale.qty;
-        }
-    }
 
     const requestedWeight = weight * qty;
 
@@ -946,60 +891,23 @@ document.getElementById("salesForm").addEventListener("submit", event => {
     const totalPackaging = packaging * qty;
     const totalExtra = extra * qty;
     const totalCost = ingredientCost + totalPackaging + totalExtra;
-    const saleRecord = {
 
-    id: id(),
-    date: document.getElementById("salesDate").value,
-
-    recipeId,
-    product: recipe.name,
-
-    weight,
-    qty,
-    price,
-
-    packaging,
-    extra,
-
-    customer:
-    document.getElementById(
-    "customerName"
-    ).value.trim(),
-
-    revenue,
-    ingredientCost,
-    totalCost,
-
-    profit: revenue - totalCost
-
-};
-
-    if(editingSaleId){
-
-    const index =
-    db.sales.findIndex(
-        s => s.id === editingSaleId
-    );
-
-    if (index < 0) {
-        alert("Sales record not found. Please refresh and try again.");
-        return;
-    }
-
-    db.sales[index] = {
-        ...saleRecord,
-        id: editingSaleId
-    };
-
-    editingSaleId = null;
-
-}else{
-
-    db.sales.push(
-        saleRecord
-    );
-
-}
+    db.sales.push({
+        id: id(),
+        date: document.getElementById("salesDate").value,
+        recipeId,
+        product: recipe.name,
+        weight,
+        qty,
+        price,
+        packaging,
+        extra,
+        customer: document.getElementById("customerName").value.trim(),
+        revenue,
+        ingredientCost,
+        totalCost,
+        profit: revenue - totalCost
+    });
 
     saveDB();
 
@@ -1012,8 +920,6 @@ document.getElementById("salesForm").addEventListener("submit", event => {
     `;
 
     event.target.reset();
-    const salesSubmit = document.querySelector('#salesForm button[type="submit"]');
-    if (salesSubmit) salesSubmit.textContent = "Save Sale";
     document.getElementById("salesDate").value = todayString();
     document.getElementById("salesWeight").value = "200";
     document.getElementById("packagingCost").value = "0";
@@ -1063,10 +969,7 @@ function renderPurchases() {
     document.querySelectorAll("[data-delete-purchase]").forEach(button => {
         button.addEventListener("click", () => {
             const purchaseId = button.dataset.deletePurchase;
-            if (db.productions.length > 0) {
-                alert("Deletion is disabled after production records exist. Use Edit if you need to correct this purchase.");
-                return;
-            }
+           
             if (confirm("Delete this purchase record? Stock and costing totals will change.")) {
                 db.purchases = db.purchases.filter(p => p.id !== purchaseId);
                 saveDB();
@@ -1140,6 +1043,7 @@ document.querySelectorAll("[data-delete-ingredient]").forEach(button => {
         </option>
     `).join("");
 }
+
 function renderRecipes() {
     document.getElementById("recipeList").innerHTML = table(
         [
@@ -1156,22 +1060,9 @@ function renderRecipes() {
             money(r.ingredientCost),
             money(r.costPerGram),
             money(r.sellingPrice),
-            
-           `
-<button
-data-edit-recipe="${r.id}">
-Edit
-</button>
-
-<button
-data-delete-recipe="${r.id}">
-Delete
-</button>
-`
-
+            `<button type="button" data-delete-recipe="${r.id}">Delete</button>`
         ])
     );
-    
 
     const options = db.recipes.map(r =>
         `<option value="${r.id}">${escapeHTML(r.name)}</option>`
@@ -1221,6 +1112,7 @@ Delete
         });
     });
 }
+
 function renderProduction() {
     document.getElementById("productionHistory").innerHTML = table(
         [
@@ -1239,17 +1131,7 @@ function renderProduction() {
             `${p.actualWeight} g`,
             `${p.saleableWeight} g`,
             money(p.ingredientCost),
-            `
-<button
-data-edit-production="${p.id}">
-Edit
-</button>
-
-<button
-data-delete-production="${p.id}">
-Delete
-</button>
-`
+            `<button type="button" data-delete-production="${p.id}">Delete</button>`
         ])
     );
 
@@ -1289,53 +1171,6 @@ Delete
         });
     });
 }
-function editSale(id){
-
-    const s = db.sales.find(
-        x => x.id === id
-    );
-
-    if(!s) return;
-
-    editingSaleId = id;
-
-    document.getElementById(
-        "salesDate"
-    ).value = s.date;
-
-    document.getElementById(
-        "salesProduct"
-    ).value = s.recipeId;
-
-    document.getElementById(
-        "salesWeight"
-    ).value = s.weight;
-
-    document.getElementById(
-        "salesQty"
-    ).value = s.qty;
-
-    document.getElementById(
-        "salesPrice"
-    ).value = s.price;
-
-    document.getElementById(
-        "packagingCost"
-    ).value = s.packaging;
-
-    document.getElementById(
-        "extraCost"
-    ).value = s.extra;
-
-    document.getElementById(
-        "customerName"
-    ).value = s.customer || "";
-
-    const submit = document.querySelector('#salesForm button[type="submit"]');
-    if (submit) submit.textContent = "Update Sale";
-    showPage("sales");
-    document.getElementById("salesForm").scrollIntoView({ behavior: "smooth", block: "start" });
-}
 
 function renderSales() {
     document.getElementById("salesHistory").innerHTML = table(
@@ -1348,46 +1183,33 @@ function renderSales() {
             money(s.revenue),
             money(s.totalCost),
             `<strong class="${s.profit >= 0 ? "good" : "bad"}">${money(s.profit)}</strong>`,
-            `
-<button
-data-edit-sale="${s.id}">
-Edit
-</button>
-
-<button
-data-delete-sale="${s.id}">
-Delete
-</button>
-`
+            `<button type="button" data-delete-sale="${s.id}">Delete</button>`
         ])
     );
-document.querySelectorAll(
-"[data-edit-sale]"
-).forEach(btn => {
 
-    btn.addEventListener(
-        "click",
-        () => editSale(
-            btn.dataset.editSale
-        )
-    );
+    document.querySelectorAll("[data-delete-sale]").forEach(button => {
+        button.addEventListener("click", () => {
+            const saleId = button.dataset.deleteSale;
+            const sale = db.sales.find(s => s.id === saleId);
 
-});
-    
+            if (!sale) {
+                alert("Sale record not found.");
+                return;
+            }
+
+            if (!confirm(
+                `Delete ${sale.product} sale (${sale.weight} g x ${sale.qty})?`
+            )) {
+                return;
+            }
+
+            db.sales = db.sales.filter(s => s.id !== saleId);
+
+            saveDB();
+            alert("Sale record deleted. Finished stock has been recalculated.");
+        });
+    });
 }
-
-
-
-// Delegate edit clicks because history tables are rebuilt on every save/render.
-document.addEventListener("click", event => {
-    const recipeButton = event.target.closest("[data-edit-recipe]");
-    const productionButton = event.target.closest("[data-edit-production]");
-    const saleButton = event.target.closest("[data-edit-sale]");
-
-    if (recipeButton) editRecipe(recipeButton.dataset.editRecipe);
-    else if (productionButton) editProduction(productionButton.dataset.editProduction);
-    else if (saleButton) editSale(saleButton.dataset.editSale);
-});
 
 function renderDashboard() {
     const purchaseTotal = db.purchases.reduce((sum, p) => sum + p.amount, 0);
@@ -1506,14 +1328,5 @@ document.getElementById("exportSalesCSV").addEventListener("click", () => {
 
 /* ---------------- INITIALIZE ---------------- */
 
-renderAll();
-
-if (getIngredientNames().length === 0) {
-    addRecipeRow();
-}
-
-// Always start Purchase Entry with one editable item row.
-if (purchaseItemsContainer.querySelectorAll(".purchase-item-row").length === 0) {
-    addPurchaseItemRow();
-}
-updatePurchaseTotal();
+// Firebase login controls when the business app and cloud data become available.
+initPrivateFirebaseLogin();

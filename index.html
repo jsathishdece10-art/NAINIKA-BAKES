@@ -5,10 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NAINIKA BAKES | Business Manager</title>
 <link rel="stylesheet" href="style.css">
+<style>
+[hidden] { display: none !important; }
+.login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background:#fff8f2; font-family:Arial,sans-serif; }
+.login-card { width:min(420px,100%); background:#fff; border:1px solid #f0d8c7; border-radius:18px; padding:28px; box-shadow:0 12px 35px rgba(75,35,10,.12); }
+.login-card h1 { margin:0 0 8px; color:#7b3f22; }
+.login-card p { color:#6b625d; }
+.login-card label { display:block; margin:14px 0 6px; font-weight:600; }
+.login-card input { width:100%; box-sizing:border-box; padding:12px; border:1px solid #d8c9bf; border-radius:8px; font-size:16px; }
+.login-card button { width:100%; padding:12px; margin-top:14px; border:0; border-radius:8px; cursor:pointer; font-weight:700; }
+#loginSubmit { background:#8b4b2a; color:white; } #googleLogin { background:#f1eee9; color:#342a24; }
+#loginMessage { min-height:22px; font-size:14px; }
+.cloud-toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:8px 16px; font-size:13px; }
+#logoutButton { border:0; border-radius:6px; padding:7px 12px; cursor:pointer; }
+</style>
 </head>
 
 <body>
-<div class="layout">
+<section id="loginPanel" class="login-screen" hidden>
+  <div class="login-card">
+    <h1>🍰 NAINIKA BAKES</h1>
+    <p>Private Business Manager — sign in to continue.</p>
+    <form id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" required>
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <button id="loginSubmit" type="submit">Sign In</button>
+    </form>
+    <button id="googleLogin" type="button">Sign in with Google</button>
+    <p id="loginMessage" role="status">Connecting to secure sign-in…</p>
+  </div>
+</section>
+<div class="layout" hidden>
+    <div class="cloud-toolbar"><span>Account: <strong id="signedInEmail"></strong></span><span id="cloudStatus">Connecting to cloud…</span><button id="logoutButton" type="button" hidden>Sign Out</button></div>
 
     <aside class="sidebar">
         <h2>🍰 NAINIKA</h2>
@@ -318,6 +348,24 @@
     </main>
 </div>
 
+<!-- Firebase compat SDKs; config is the one shown in your Firebase console. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB_E_Zz36ub4BAPwiWjwYORv11S1-i1HEM",
+    authDomain: "nainika-bakes.firebaseapp.com",
+    projectId: "nainika-bakes",
+    storageBucket: "nainika-bakes.firebasestorage.app",
+    messagingSenderId: "731843310602",
+    appId: "1:731843310602:web:b00aae0456b42f64b6dbf3",
+    measurementId: "G-KK6EYX5PM4"
+  };
+  firebase.initializeApp(firebaseConfig);
+  window.firebaseAuth = firebase.auth();
+  window.firebaseDb = firebase.firestore();
+</script>
 <script src="app.js"></script>
 </body>
 </html>

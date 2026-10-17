@@ -326,14 +326,21 @@ footer {
     font-weight: bold;
 }
 
-@media (max-width: 1050px) {
-    .sidebar {
-        width: 215px;
-    }
+/* Dashboard layout improvement */
+@media (min-width: 1051px) {
+  .layout {
+    width: 100%;
+    max-width: 100%;
+  }
 
-    .cards {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 650px) {
@@ -453,4 +460,40 @@ footer {
     color:#217a48;
     font-size:26px;
     font-weight:700;
+}
+/* Cloud toolbar - compact layout */
+.cloud-toolbar {
+  position: fixed;
+  right: 15px;
+  top: 15px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  max-width: 340px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  background: #fffaf5;
+  border: 1px solid #e9ddd2;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.cloud-toolbar span {
+  overflow-wrap: anywhere;
+}
+
+.cloud-toolbar button {
+  padding: 5px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (max-width: 650px) {
+  .cloud-toolbar {
+   
+    max-width: calc(100% - 10px);
+    flex-wrap: wrap;
+  }
 }
