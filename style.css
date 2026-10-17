@@ -491,6 +491,7 @@ footer {
 }
 
 @media (max-width: 650px) {
+    
   .cloud-toolbar {
    
     max-width: calc(100% - 10px);
