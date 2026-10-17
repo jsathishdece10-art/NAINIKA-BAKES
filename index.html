@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAINIKA BAKES | Business Manager</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="layout">
+
+    <aside class="sidebar">
+        <h2>🍰 NAINIKA</h2>
+        <p class="subtitle">BAKES BUSINESS MANAGER</p>
+
+        <button class="nav active" data-page="dashboard">📊 Dashboard</button>
+        <button class="nav" data-page="purchase">🛒 Purchase Entry</button>
+        <button class="nav" data-page="stock">📦 Ingredient Stock</button>
+        <button class="nav" data-page="recipe">🍫 Recipe Costing</button>
+        <button class="nav" data-page="production">🧁 Production</button>
+        <button class="nav" data-page="sales">💰 Sales Entry</button>
+        <button class="nav" data-page="reports">📈 Reports</button>
+
+        <p class="footer-brand">Homemade with Love ❤️</p>
+    </aside>
+
+    <main class="main">
+        <header class="header">
+            <div>
+                <h1 id="pageTitle">Business Dashboard</h1>
+                <p>Welcome to NAINIKA BAKES</p>
+            </div>
+            <span id="today"></span>
+        </header>
+
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="page">
+            <div class="hero">
+                <h2>Welcome to NAINIKA BAKES! 🍫</h2>
+                <p>Manage purchases, ingredients, recipes, production and sales.</p>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <p>Total Purchases</p>
+                    <h2 id="dashPurchase">₹0.00</h2>
+                </div>
+                <div class="card">
+                    <p>Total Sales</p>
+                    <h2 id="dashSales">₹0.00</h2>
+                </div>
+                <div class="card">
+                    <p>Stock Value</p>
+                    <h2 id="dashStock">₹0.00</h2>
+                </div>
+                <div class="card">
+                    <p>Estimated Profit</p>
+                    <h2 id="dashProfit">₹0.00</h2>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Quick Actions</h3>
+                <div class="actions">
+                    <button data-go="purchase">+ Add Purchase</button>
+                    <button data-go="recipe">+ Add Recipe</button>
+                    <button data-go="production">+ Production</button>
+                    <button data-go="sales">+ Add Sale</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Low Stock Alert</h3>
+                <div id="lowStock"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Recent Sales</h3>
+                <div id="recentSales"></div>
+            </div>
+        </section>
+
+        <!-- PURCHASE -->
+        <section id="purchase" class="page hidden">
+            <div class="panel">
+                <h2>🛒 Purchase Entry</h2>
+
+                <form id="purchaseForm" class="form-grid">
+                    <label>Date
+                        <input type="date" id="purchaseDate" required>
+                    </label>
+
+                    <label>Ingredient / Item
+                        <input id="purchaseName" placeholder="Butter" required>
+                    </label>
+
+                    <label>Purchased Quantity
+                        <input type="number" id="purchaseQty"
+                               min="0.001" step="any" required>
+                    </label>
+
+                    <label>Unit
+                        <select id="purchaseUnit">
+                            <option value="g">Gram (g)</option>
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="ml">Millilitre (ml)</option>
+                            <option value="L">Litre (L)</option>
+                            <option value="pcs">Pieces</option>
+                        </select>
+                    </label>
+
+                    <label>Total Amount (₹)
+                        <input type="number" id="purchaseAmount"
+                               min="0" step="0.01" required>
+                    </label>
+
+                    <label>Supplier
+                        <input id="supplier" placeholder="Supplier name">
+                    </label>
+
+                    <button class="primary" type="submit">Save Purchase</button>
+                </form>
+
+                <p class="hint">Unit cost is calculated automatically from quantity and total amount.</p>
+            </div>
+
+            <div class="panel">
+                <h3>Purchase History</h3>
+                <div id="purchaseHistory"></div>
+            </div>
+        </section>
+
+        <!-- STOCK -->
+        <section id="stock" class="page hidden">
+            <div class="panel">
+                <h2>📦 Ingredient Stock</h2>
+                <p>Available quantity = purchased quantity − quantity used − wastage.</p>
+                <div id="stockTable"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Record Ingredient Wastage</h3>
+                <form id="wasteForm" class="form-grid">
+                    <label>Ingredient
+                        <select id="wasteIngredient" required></select>
+                    </label>
+                    <label>Quantity Wasted
+                        <input type="number" id="wasteQty"
+                               min="0.001" step="any" required>
+                    </label>
+                    <label>Reason
+                        <input id="wasteReason" placeholder="Spillage, expiry, etc.">
+                    </label>
+                    <button class="primary" type="submit">Record Wastage</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- RECIPE -->
+        <section id="recipe" class="page hidden">
+            <div class="panel">
+                <h2>🍫 Recipe Costing</h2>
+                <p>Enter the quantity used for one full recipe batch. Cost is calculated from purchase prices.</p>
+
+                <form id="recipeForm">
+                    <div class="form-grid">
+                        <label>Recipe Name
+                            <input id="recipeName" placeholder="Classic Brownie" required>
+                        </label>
+
+                        <label>Actual Finished Batch Weight (g)
+                            <input type="number" id="recipeWeight"
+                                   min="1" step="any" required>
+                        </label>
+
+                        <label>Default Selling Price (₹ per box)
+                            <input type="number" id="recipePrice"
+                                   min="0" step="0.01" required>
+                        </label>
+                    </div>
+
+                    <h3>Recipe Ingredients</h3>
+                    <p class="hint">Select an ingredient from your purchase list and enter the quantity used.</p>
+
+                    <div id="recipeRows"></div>
+
+                    <button type="button" id="addRecipeRow" class="secondary">
+                        + Add Ingredient
+                    </button>
+
+                    <button type="submit" class="primary">Calculate & Save Recipe</button>
+                </form>
+
+                <div id="recipeResult" class="result"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Saved Recipes</h3>
+                <div id="recipeList"></div>
+            </div>
+        </section>
+
+        <!-- PRODUCTION -->
+        <section id="production" class="page hidden">
+            <div class="panel">
+                <h2>🧁 Production Entry</h2>
+                <p>Record production only after checking that enough ingredients are in stock.</p>
+
+                <form id="productionForm" class="form-grid">
+                    <label>Production Date
+                        <input type="date" id="productionDate" required>
+                    </label>
+
+                    <label>Recipe
+                        <select id="productionRecipe" required></select>
+                    </label>
+
+                    <label>Number of Batches
+                        <input type="number" id="productionBatches"
+                               min="0.001" step="any" value="1" required>
+                    </label>
+
+                    <label>Actual Finished Weight (g)
+                        <input type="number" id="actualProductionWeight"
+                               min="1" step="any" required>
+                    </label>
+
+                    <label>Wastage Weight (g)
+                        <input type="number" id="productionWastage"
+                               min="0" step="any" value="0" required>
+                    </label>
+
+                    <button class="primary" type="submit">Save Production</button>
+                </form>
+
+                <div id="productionResult" class="result"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Production History</h3>
+                <div id="productionHistory"></div>
+            </div>
+        </section>
+
+        <!-- SALES -->
+        <section id="sales" class="page hidden">
+            <div class="panel">
+                <h2>💰 Sales Entry</h2>
+
+                <form id="salesForm" class="form-grid">
+                    <label>Sale Date
+                        <input type="date" id="salesDate" required>
+                    </label>
+
+                    <label>Product
+                        <select id="salesProduct" required></select>
+                    </label>
+
+                    <label>Box Weight (g)
+                        <input type="number" id="salesWeight"
+                               min="1" step="any" value="200" required>
+                    </label>
+
+                    <label>Quantity Sold
+                        <input type="number" id="salesQty"
+                               min="1" step="1" required>
+                    </label>
+
+                    <label>Selling Price Per Box (₹)
+                        <input type="number" id="salesPrice"
+                               min="0" step="0.01" required>
+                    </label>
+
+                    <label>Packaging Cost Per Box (₹)
+                        <input type="number" id="packagingCost"
+                               min="0" step="0.01" value="0" required>
+                    </label>
+
+                    <label>Extra Cost Per Box (₹)
+                        <input type="number" id="extraCost"
+                               min="0" step="0.01" value="0" required>
+                    </label>
+
+                    <label>Customer
+                        <input id="customerName" placeholder="Optional">
+                    </label>
+
+                    <button class="primary" type="submit">Save Sale</button>
+                </form>
+
+                <div id="salesPreview" class="result"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Sales History</h3>
+                <div id="salesHistory"></div>
+            </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="reports" class="page hidden">
+            <div class="panel">
+                <h2>📈 Profit & Loss Report</h2>
+                <div id="profitReport"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Data Backup</h3>
+                <p>Download your current records as a JSON backup file.</p>
+                <button id="exportBackup" class="primary">Download Backup</button>
+                <button id="exportSalesCSV" class="secondary">Export Sales CSV</button>
+                <p class="hint">This backup is not a substitute for Google Drive cloud storage.</p>
+            </div>
+        </section>
+
+        <footer>© 2026 NAINIKA BAKES | Business Manager</footer>
+    </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
