@@ -36,6 +36,9 @@ function loadDB() {
 }
 
 let db = loadDB();
+let editingRecipeId = null;
+let editingProductionId = null;
+let editingSaleId = null;
 let cloudReady = false;
 let cloudSaveTimer = null;
 let cloudLoadGeneration = 0;
@@ -411,8 +414,8 @@ purchaseForm.innerHTML = `
         <label>Supplier
             <input type="text" id="supplier" placeholder="Supplier name" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;">
         </label>
-        <label>Bill Number (optional)
-            <input type="text" id="billNumber" placeholder="Bill number" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;">
+        <label>Bill Number
+            <input type="text" id="billNumber" placeholder="Bill number" required style="display:block;width:100%;box-sizing:border-box;margin-top:6px;">
         </label>
     </div>
     <div style="overflow-x:auto;">
@@ -491,6 +494,7 @@ purchaseForm.addEventListener("submit", function (event) {
     const date = purchaseDateInput.value;
     const supplier = document.getElementById("supplier").value.trim();
     const billNo = document.getElementById("billNumber").value.trim();
+    if (!billNo) { alert("Purchase bill number enter pannunga."); return; }
     const rows = [...purchaseItemsContainer.querySelectorAll(".purchase-item-row")];
     if (!date || rows.length === 0) {
         alert("Purchase date and at least one item enter pannunga.");
@@ -594,6 +598,7 @@ function addRecipeRow(initial = {}) {
 
     if (initial.name) {
         select.value = initial.name.toLowerCase();
+        if (!select.value) { const match = [...select.options].find(o => (o.dataset.name || "").toLowerCase() === initial.name.toLowerCase()); if (match) select.value = match.value; }
         qtyInput.value = initial.qty;
     }
 
@@ -683,9 +688,9 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
         const ingredients = collectRecipeIngredients();
         const ingredientCost = ingredients.reduce((sum, item) => sum + item.cost, 0);
 
-        const existing = db.recipes.find(r =>
-            r.name.toLowerCase() === name.toLowerCase()
-        );
+        const existing = editingRecipeId
+            ? db.recipes.find(r => r.id === editingRecipeId)
+            : db.recipes.find(r => r.name.toLowerCase() === name.toLowerCase());
 
         const recipe = {
             id: existing ? existing.id : id(),
@@ -704,6 +709,9 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
             db.recipes.push(recipe);
         }
 
+        editingRecipeId = null;
+        const recipeSubmit = document.querySelector("#recipeForm button[type=submit]");
+        if (recipeSubmit) recipeSubmit.textContent = "Save Recipe";
         saveDB();
         updateRecipeResult(recipe);
         event.target.reset();
@@ -763,7 +771,16 @@ document.getElementById("productionForm").addEventListener("submit", event => {
 
     for (const ingredient of recipe.ingredients) {
         const needed = ingredient.qty * batches;
-        const available = getIngredientStock(ingredient.name, ingredient.unit);
+        let available = getIngredientStock(ingredient.name, ingredient.unit);
+        // While editing, add back the ingredients consumed by the old version of this production.
+        if (editingProductionId) {
+            const oldProduction = db.productions.find(p => p.id === editingProductionId);
+            const oldRecipe = oldProduction && db.recipes.find(r => r.id === oldProduction.recipeId);
+            const oldIngredient = oldRecipe && oldRecipe.ingredients.find(i =>
+                i.name.toLowerCase() === ingredient.name.toLowerCase() && i.unit === ingredient.unit
+            );
+            if (oldIngredient) available += oldIngredient.qty * oldProduction.batches;
+        }
 
         if (available < needed) {
             alert(
@@ -776,7 +793,7 @@ document.getElementById("productionForm").addEventListener("submit", event => {
     }
 
     const record = {
-        id: id(),
+        id: editingProductionId || id(),
         date: document.getElementById("productionDate").value,
         recipeId,
         recipeName: recipe.name,
@@ -787,7 +804,11 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         ingredientCost: recipe.ingredientCost * batches
     };
 
-    db.productions.push(record);
+    if (editingProductionId) {
+        db.productions = db.productions.map(p => p.id === editingProductionId ? record : p);
+        editingProductionId = null;
+        const submit = document.querySelector("#productionForm button[type=submit]"); if (submit) submit.textContent = "Save Production";
+    } else { db.productions.push(record); }
     saveDB();
 
     document.getElementById("productionResult").innerHTML = `
@@ -865,6 +886,8 @@ document.getElementById("salesForm").addEventListener("submit", event => {
     const packaging = number(document.getElementById("packagingCost").value);
     const extra = number(document.getElementById("extraCost").value);
 
+    const customer = document.getElementById("customerName").value.trim();
+    if (!customer) { alert("Customer name required. Customer name enter pannunga."); document.getElementById("customerName").focus(); return; }
     if (weight <= 0 || qty <= 0 || price < 0 || packaging < 0 || extra < 0) {
         alert("Enter valid sales details.");
         return;
@@ -873,7 +896,7 @@ document.getElementById("salesForm").addEventListener("submit", event => {
     const availableFinishedWeight = db.productions.reduce((sum, p) =>
         sum + (p.recipeId === recipeId ? p.saleableWeight : 0), 0
     ) - db.sales.reduce((sum, s) =>
-        sum + (s.recipeId === recipeId ? s.weight * s.qty : 0), 0
+        sum + (s.recipeId === recipeId && s.id !== editingSaleId ? s.weight * s.qty : 0), 0
     );
 
     const requestedWeight = weight * qty;
@@ -892,8 +915,8 @@ document.getElementById("salesForm").addEventListener("submit", event => {
     const totalExtra = extra * qty;
     const totalCost = ingredientCost + totalPackaging + totalExtra;
 
-    db.sales.push({
-        id: id(),
+    const saleRecord = {
+        id: editingSaleId || id(),
         date: document.getElementById("salesDate").value,
         recipeId,
         product: recipe.name,
@@ -902,12 +925,13 @@ document.getElementById("salesForm").addEventListener("submit", event => {
         price,
         packaging,
         extra,
-        customer: document.getElementById("customerName").value.trim(),
+        customer,
         revenue,
         ingredientCost,
         totalCost,
         profit: revenue - totalCost
-    });
+    };
+    if (editingSaleId) { db.sales = db.sales.map(s => s.id === editingSaleId ? saleRecord : s); editingSaleId = null; const submit = document.querySelector("#salesForm button[type=submit]"); if (submit) submit.textContent = "Save Sale"; } else { db.sales.push(saleRecord); }
 
     saveDB();
 
@@ -921,7 +945,7 @@ document.getElementById("salesForm").addEventListener("submit", event => {
 
     event.target.reset();
     document.getElementById("salesDate").value = todayString();
-    document.getElementById("salesWeight").value = "200";
+    document.getElementById("salesWeight").value = "";
     document.getElementById("packagingCost").value = "0";
     document.getElementById("extraCost").value = "0";
 
@@ -946,21 +970,79 @@ function table(headers, rows) {
 }
 
 function renderPurchases() {
-    const rows = [...db.purchases].reverse().map(p => [
-        escapeHTML(p.date),
-        escapeHTML(p.name),
-        displayQty(p.qty, p.unit),
-        escapeHTML(p.unit),
-        money(p.amount),
-        escapeHTML(p.supplier || "—"),
-        `<button type="button" data-edit-purchase="${p.id}">Edit</button>
-         <button type="button" data-delete-purchase="${p.id}">Delete</button>`
-    ]);
+    // Group purchase history by bill number + date. Clicking a bill reveals its items.
+    const groups = new Map();
+    [...db.purchases].sort((a, b) =>
+        (b.date || "").localeCompare(a.date || "") ||
+        String(b.billNo || "").localeCompare(String(a.billNo || ""))
+    ).forEach(p => {
+        const key = `${p.date || ""}__${p.billNo || "NO-BILL"}__${p.supplier || ""}`;
+        if (!groups.has(key)) groups.set(key, { key, date: p.date || "—", billNo: p.billNo || "—", supplier: p.supplier || "—", items: [], total: 0 });
+        const group = groups.get(key);
+        group.items.push(p);
+        group.total += Number(p.amount) || 0;
+    });
 
-    document.getElementById("purchaseHistory").innerHTML = table(
-        ["Date", "Ingredient / Item", "Purchased Qty", "Unit", "Total Amount", "Supplier", "Action"],
-        rows
-    );
+    if (groups.size === 0) {
+        document.getElementById("purchaseHistory").innerHTML = "<p>No records available.</p>";
+        return;
+    }
+
+    const groupRows = [...groups.values()].map((g, index) => {
+        const detailsId = `purchase-bill-details-${index}`;
+        const itemCount = g.items.length;
+        const detailRows = g.items.map(p => `
+            <tr>
+                <td>${escapeHTML(p.name || "")}</td>
+                <td>${displayQty(p.qty, p.unit)}</td>
+                <td>${escapeHTML(p.unit || "")}</td>
+                <td>${money(p.amount)}</td>
+                <td>
+                    <button type="button" data-edit-purchase="${escapeHTML(p.id)}">Edit</button>
+                    <button type="button" data-delete-purchase="${escapeHTML(p.id)}">Delete</button>
+                </td>
+            </tr>
+        `).join("");
+        return `
+            <tr class="purchase-bill-group-row">
+                <td>${escapeHTML(g.date)}</td>
+                <td><button type="button" class="purchase-bill-toggle" data-purchase-toggle="${detailsId}" aria-expanded="false">＋ ${escapeHTML(g.billNo)}</button></td>
+                <td>${escapeHTML(g.supplier)}</td>
+                <td>${itemCount} item${itemCount === 1 ? "" : "s"}</td>
+                <td>${money(g.total)}</td>
+            </tr>
+            <tr id="${detailsId}" class="purchase-bill-details" hidden>
+                <td colspan="5">
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Product / Ingredient</th><th>Purchased Qty</th><th>Unit</th><th>Amount (₹)</th><th>Action</th></tr></thead>
+                            <tbody>${detailRows}</tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    document.getElementById("purchaseHistory").innerHTML = `
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Date</th><th>Bill Number (click to view items)</th><th>Supplier</th><th>Items</th><th>Total Bill Amount (₹)</th></tr></thead>
+                <tbody>${groupRows}</tbody>
+            </table>
+        </div>
+    `;
+
+    document.querySelectorAll("[data-purchase-toggle]").forEach(button => {
+        button.addEventListener("click", () => {
+            const details = document.getElementById(button.dataset.purchaseToggle);
+            if (!details) return;
+            const willOpen = details.hidden;
+            details.hidden = !willOpen;
+            button.setAttribute("aria-expanded", String(willOpen));
+            button.textContent = `${willOpen ? "－" : "＋"} ${button.textContent.replace(/^[＋－]\s*/, "")}`;
+        });
+    });
 
     document.querySelectorAll("[data-edit-purchase]").forEach(button => {
         button.addEventListener("click", () => editPurchaseRecord(button.dataset.editPurchase));
@@ -969,7 +1051,6 @@ function renderPurchases() {
     document.querySelectorAll("[data-delete-purchase]").forEach(button => {
         button.addEventListener("click", () => {
             const purchaseId = button.dataset.deletePurchase;
-           
             if (confirm("Delete this purchase record? Stock and costing totals will change.")) {
                 db.purchases = db.purchases.filter(p => p.id !== purchaseId);
                 saveDB();
@@ -1060,7 +1141,7 @@ function renderRecipes() {
             money(r.ingredientCost),
             money(r.costPerGram),
             money(r.sellingPrice),
-            `<button type="button" data-delete-recipe="${r.id}">Delete</button>`
+            `<button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
         ])
     );
 
@@ -1077,9 +1158,23 @@ function renderRecipes() {
         document.getElementById("recipePrice").value =
             selectedRecipe.sellingPrice;
 
-        document.getElementById("salesPrice").value =
-            selectedRecipe.sellingPrice;
     }
+
+    document.querySelectorAll("[data-edit-recipe]").forEach(button => {
+        button.addEventListener("click", () => {
+            const recipe = db.recipes.find(r => r.id === button.dataset.editRecipe);
+            if (!recipe) return;
+            editingRecipeId = recipe.id;
+            document.getElementById("recipeName").value = recipe.name;
+            document.getElementById("recipeWeight").value = recipe.finishedWeight;
+            document.getElementById("recipePrice").value = recipe.sellingPrice;
+            recipeRows.innerHTML = "";
+            recipe.ingredients.forEach(ingredient => addRecipeRow(ingredient));
+            const submit = document.querySelector("#recipeForm button[type=submit]");
+            if (submit) submit.textContent = "Update Recipe";
+            document.getElementById("recipeForm").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+    });
 
     document.querySelectorAll("[data-delete-recipe]").forEach(button => {
         button.addEventListener("click", () => {
@@ -1131,9 +1226,23 @@ function renderProduction() {
             `${p.actualWeight} g`,
             `${p.saleableWeight} g`,
             money(p.ingredientCost),
-            `<button type="button" data-delete-production="${p.id}">Delete</button>`
+            `<button type="button" data-edit-production="${p.id}">Edit</button> <button type="button" data-delete-production="${p.id}">Delete</button>`
         ])
     );
+
+    document.querySelectorAll("[data-edit-production]").forEach(button => {
+        button.addEventListener("click", () => {
+            const p = db.productions.find(item => item.id === button.dataset.editProduction); if (!p) return;
+            editingProductionId = p.id;
+            document.getElementById("productionDate").value = p.date || todayString();
+            document.getElementById("productionRecipe").value = p.recipeId;
+            document.getElementById("productionBatches").value = p.batches;
+            document.getElementById("actualProductionWeight").value = p.actualWeight;
+            document.getElementById("productionWastage").value = p.wastage;
+            const submit = document.querySelector("#productionForm button[type=submit]"); if (submit) submit.textContent = "Update Production";
+            document.getElementById("productionForm").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+    });
 
     document.querySelectorAll("[data-delete-production]").forEach(button => {
         button.addEventListener("click", () => {
@@ -1174,18 +1283,36 @@ function renderProduction() {
 
 function renderSales() {
     document.getElementById("salesHistory").innerHTML = table(
-        ["Date", "Product", "Weight", "Qty", "Revenue", "Cost", "Profit", "Action"],
+        ["Date", "Product", "Customer", "Weight", "Qty", "Revenue", "Cost", "Profit", "Action"],
         [...db.sales].reverse().map(s => [
             escapeHTML(s.date),
             escapeHTML(s.product),
+            escapeHTML(s.customer || "—"),
             `${s.weight} g`,
             s.qty,
             money(s.revenue),
             money(s.totalCost),
             `<strong class="${s.profit >= 0 ? "good" : "bad"}">${money(s.profit)}</strong>`,
-            `<button type="button" data-delete-sale="${s.id}">Delete</button>`
+            `<button type="button" data-edit-sale="${s.id}">Edit</button> <button type="button" data-delete-sale="${s.id}">Delete</button>`
         ])
     );
+
+    document.querySelectorAll("[data-edit-sale]").forEach(button => {
+        button.addEventListener("click", () => {
+            const sale = db.sales.find(item => item.id === button.dataset.editSale); if (!sale) return;
+            editingSaleId = sale.id;
+            document.getElementById("salesDate").value = sale.date || todayString();
+            document.getElementById("salesProduct").value = sale.recipeId;
+            document.getElementById("salesWeight").value = sale.weight;
+            document.getElementById("salesQty").value = sale.qty;
+            document.getElementById("salesPrice").value = sale.price;
+            document.getElementById("packagingCost").value = sale.packaging;
+            document.getElementById("extraCost").value = sale.extra;
+            document.getElementById("customerName").value = sale.customer || "";
+            const submit = document.querySelector("#salesForm button[type=submit]"); if (submit) submit.textContent = "Update Sale";
+            document.getElementById("salesForm").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+    });
 
     document.querySelectorAll("[data-delete-sale]").forEach(button => {
         button.addEventListener("click", () => {
