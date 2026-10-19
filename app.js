@@ -226,13 +226,16 @@ function canonicalIngredientName(name) {
     }
 
     const darkChocolateAliases = new Set([
-        "2m premium dark",
-        "2m dark chocolate",
-        "2m dark compound cp 16",
-        "2m dark compound",
-        "2m premium dark chocolate"
-    ]);
-
+    "2m premium dark",
+    "2m premium dark chocolate",
+    "2m dark chocolate",
+    "2m dark compound",
+    "2m dark compound cp 16",
+    "2m compound",
+    "2m dark",
+    "premium dark",
+    "2m premium"
+]);
     if (darkChocolateAliases.has(normalized)) {
         return "2m-premium-dark";
     }
@@ -640,10 +643,19 @@ function addRecipeRow(initial = {}) {
     console.log("Ingredient dropdown options:", select.options.length);
 
     if (initial.name) {
-        select.value = initial.name.toLowerCase();
-        if (!select.value) { const match = [...select.options].find(o => (o.dataset.name || "").toLowerCase() === initial.name.toLowerCase()); if (match) select.value = match.value; }
-        qtyInput.value = initial.qty;
+
+    const match = [...select.options].find(
+        o =>
+        (o.dataset.name || "").toLowerCase() ===
+        initial.name.toLowerCase()
+    );
+
+    if (match) {
+        select.value = match.value;
     }
+
+    qtyInput.value = initial.qty;
+}
 
     function updateRowCost() {
         const option = select.selectedOptions[0];
@@ -1215,7 +1227,7 @@ document.querySelectorAll("[data-delete-ingredient]").forEach(button => {
         )) return;
 
         db.purchases = db.purchases.filter(p =>
-            `${p.name.toLowerCase().trim()}|${p.baseUnit}` !== ingredientKey
+            `${canonicalIngredientName(p.name)}|${p.baseUnit}` !== ingredientKey
         );
 
         saveDB();
