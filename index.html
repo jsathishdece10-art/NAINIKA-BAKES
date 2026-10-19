@@ -19,6 +19,7 @@
 .cloud-toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:8px 16px; font-size:13px; }
 #logoutButton { border:0; border-radius:6px; padding:7px 12px; cursor:pointer; }
 </style>
+<style>.section-search{display:block;width:min(100%,520px);box-sizing:border-box;margin:12px 0 16px;padding:10px 12px;border:1px solid #d8c9bf;border-radius:8px;font-size:15px;background:#fff}</style>
 </head>
 
 <body>
@@ -39,6 +40,7 @@
 </section>
 <div class="layout" hidden>
     <div class="cloud-toolbar"><span>Account: <strong id="signedInEmail"></strong></span><span id="cloudStatus">Connecting to cloud…</span><button id="logoutButton" type="button" hidden>Sign Out</button></div>
+
 
     <aside class="sidebar">
         <h2>🍰 NAINIKA</h2>
@@ -157,6 +159,7 @@
 
             <div class="panel">
                 <h3>Purchase History</h3>
+                <input class="section-search" id="purchaseHistorySearch" type="search" placeholder="Search purchase history: date, bill number, supplier, item…" aria-label="Search purchase history">
                 <div id="purchaseHistory"></div>
             </div>
         </section>
@@ -166,6 +169,9 @@
             <div class="panel">
                 <h2>📦 Ingredient Stock</h2>
                 <p>Available quantity = purchased quantity − quantity used − wastage.</p>
+                <input class="section-search" id="stockSearch" type="search" placeholder="Search ingredients stock…" aria-label="Search ingredients stock">
+                <button type="button" id="exportStockReconciliation">Download Stock Reconciliation CSV</button>
+                <p class="muted">Stock is calculated from saved purchases − saved production ingredient usage − saved wastage. Sales reduce finished-product stock, not raw ingredients a second time. Negative balances mean a purchase, production, wastage, or unit entry needs checking; the app will not add stock automatically.</p>
                 <div id="stockTable"></div>
             </div>
 
@@ -324,6 +330,7 @@
 
             <div class="panel">
                 <h3>Sales History</h3>
+                <input class="section-search" id="salesHistorySearch" type="search" placeholder="Search sales: date, product, customer…" aria-label="Search sales history">
                 <div id="salesHistory"></div>
             </div>
         </section>

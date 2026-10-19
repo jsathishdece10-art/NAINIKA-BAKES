@@ -201,6 +201,46 @@ function baseUnit(unit) {
     return unit;
 }
 
+function canonicalIngredientName(name) {
+
+    const normalized = String(name || "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .trim()
+        .replace(/[.,()_-]+/g, " ")
+        .replace(/\s+/g, " ");
+
+    const butterAliases = new Set([
+        "butter",
+        "amul butter",
+        "amul salted butter",
+        "amul unsalted butter",
+        "amul pasteurized butter",
+        "butter amul",
+        "amul butter salted",
+        "amul butter unsalted"
+    ]);
+
+    if (butterAliases.has(normalized)) {
+        return "butter";
+    }
+
+    const darkChocolateAliases = new Set([
+        "2m premium dark",
+        "2m dark chocolate",
+        "2m dark compound cp 16",
+        "2m dark compound",
+        "2m premium dark chocolate"
+    ]);
+
+    if (darkChocolateAliases.has(normalized)) {
+        return "2m-premium-dark";
+    }
+
+    return normalized;
+}
+
+
 function toBaseQty(qty, unit) {
     if (unit === "kg" || unit === "L") return qty * 1000;
     return qty;
@@ -293,7 +333,7 @@ function getIngredientNames() {
     const names = new Map();
 
     db.purchases.forEach(p => {
-        const key = p.name.toLowerCase().trim();
+        const key = `${canonicalIngredientName(p.name)}|${p.baseUnit}`;
         if (!names.has(key)) {
             names.set(key, {
                 key,
@@ -310,7 +350,7 @@ function getStockLedger() {
     const ledger = {};
 
     function getItem(name, unit) {
-        const key = `${name.toLowerCase().trim()}|${unit}`;
+        const key = `${canonicalIngredientName(name)}|${unit}`;
 
         if (!ledger[key]) {
             ledger[key] = {
@@ -337,12 +377,15 @@ function getStockLedger() {
     });
 
     db.productions.forEach(prod => {
-        const recipe = db.recipes.find(r => r.id === prod.recipeId);
-        if (!recipe) return;
+        // Use the ingredient snapshot saved with this production. Recipe edits
+        // must never rewrite the stock consumed by an older production.
+        const ingredients = Array.isArray(prod.ingredients)
+            ? prod.ingredients
+            : (db.recipes.find(r => r.id === prod.recipeId)?.ingredients || []);
 
-        recipe.ingredients.forEach(ingredient => {
+        ingredients.forEach(ingredient => {
             const item = getItem(ingredient.name, ingredient.unit);
-            item.usedQty += ingredient.qty * prod.batches;
+            item.usedQty += number(ingredient.qty) * number(prod.batches);
         });
     });
 
@@ -368,7 +411,7 @@ function getStockLedger() {
 
 function getIngredientStock(name, unit) {
     const item = getStockLedger().find(i =>
-        i.name.toLowerCase() === name.toLowerCase() &&
+        canonicalIngredientName(i.name) === canonicalIngredientName(name) &&
         i.unit === unit
     );
 
@@ -377,7 +420,7 @@ function getIngredientStock(name, unit) {
 
 function getPurchaseCost(name, unit, qty) {
     const purchases = db.purchases.filter(p =>
-        p.name.toLowerCase() === name.toLowerCase() &&
+        canonicalIngredientName(p.name) === canonicalIngredientName(name) &&
         p.baseUnit === unit
     );
 
@@ -391,7 +434,7 @@ function getPurchaseCost(name, unit, qty) {
 
 function getPurchaseUnitCost(name, unit) {
     const purchases = db.purchases.filter(p =>
-        p.name.toLowerCase() === name.toLowerCase() &&
+        canonicalIngredientName(p.name) === canonicalIngredientName(name) &&
         p.baseUnit === unit
     );
 
@@ -776,17 +819,45 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         if (editingProductionId) {
             const oldProduction = db.productions.find(p => p.id === editingProductionId);
             const oldRecipe = oldProduction && db.recipes.find(r => r.id === oldProduction.recipeId);
-            const oldIngredient = oldRecipe && oldRecipe.ingredients.find(i =>
-                i.name.toLowerCase() === ingredient.name.toLowerCase() && i.unit === ingredient.unit
+            const oldIngredients = oldProduction && Array.isArray(oldProduction.ingredients)
+                ? oldProduction.ingredients
+                : (oldRecipe ? oldRecipe.ingredients : []);
+            const oldIngredient = oldIngredients.find(i =>
+                canonicalIngredientName(i.name) === canonicalIngredientName(ingredient.name) && i.unit === ingredient.unit
             );
-            if (oldIngredient) available += oldIngredient.qty * oldProduction.batches;
+            if (oldIngredient) available += number(oldIngredient.qty) * number(oldProduction.batches);
         }
 
         if (available < needed) {
+            // Show the calculation sources so the user can distinguish a name
+            // mismatch from stock already consumed by previous production.
+            const matchingPurchases = db.purchases.filter(p =>
+                canonicalIngredientName(p.name) === canonicalIngredientName(ingredient.name) &&
+                p.baseUnit === ingredient.unit
+            );
+            const purchased = matchingPurchases.reduce((sum, p) => sum + number(p.baseQty), 0);
+            const used = db.productions.reduce((sum, prod) => {
+                const usedRecipe = db.recipes.find(r => r.id === prod.recipeId);
+                const usedIngredients = Array.isArray(prod.ingredients)
+                    ? prod.ingredients
+                    : (usedRecipe ? usedRecipe.ingredients : []);
+                return sum + usedIngredients.reduce((ingredientSum, oldIngredient) => {
+                    if (canonicalIngredientName(oldIngredient.name) !== canonicalIngredientName(ingredient.name) ||
+                        oldIngredient.unit !== ingredient.unit) return ingredientSum;
+                    return ingredientSum + number(oldIngredient.qty) * number(prod.batches);
+                }, 0);
+            }, 0);
+            const wasted = db.wastage.reduce((sum, w) =>
+                canonicalIngredientName(w.name) === canonicalIngredientName(ingredient.name) && w.unit === ingredient.unit
+                    ? sum + number(w.qty) : sum, 0);
             alert(
-                `Insufficient stock for ${ingredient.name}. ` +
-                `Available: ${displayQty(available, ingredient.unit)}, ` +
-                `required: ${displayQty(needed, ingredient.unit)}.`
+                `Insufficient stock for ${ingredient.name}.\n` +
+                `Available now: ${displayQty(available, ingredient.unit)}\n` +
+                `Required: ${displayQty(needed, ingredient.unit)}\n\n` +
+                `Purchase records counted: ${displayQty(purchased, ingredient.unit)}\n` +
+                `Previous production usage: ${displayQty(used, ingredient.unit)}\n` +
+                `Wastage recorded: ${displayQty(wasted, ingredient.unit)}\n\n` +
+                `Amul Butter and Butter are matched automatically. If the purchase is missing from this calculation, check that the Amul Butter purchase was saved to the same signed-in cloud account and uses grams (g). No stock or old data was changed.`
             );
             return;
         }
@@ -797,6 +868,14 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         date: document.getElementById("productionDate").value,
         recipeId,
         recipeName: recipe.name,
+        // Freeze recipe ingredients at production time; future recipe edits
+        // affect new production only, not existing stock history.
+        ingredients: recipe.ingredients.map(item => ({
+            name: item.name,
+            qty: number(item.qty),
+            unit: item.unit,
+            cost: number(item.cost || 0)
+        })),
         batches,
         actualWeight,
         wastage,
@@ -1058,6 +1137,36 @@ function renderPurchases() {
         });
     });
 }
+
+function exportStockReconciliation() {
+    // Read-only report: it never edits local or Firebase data.
+    const rows = getStockLedger().map(item => ({
+        ingredient: item.name,
+        unit: item.unit,
+        purchased: item.purchasedQty,
+        usedInProduction: item.usedQty,
+        wastage: item.wastedQty,
+        currentBalance: item.remainingQty,
+        averageUnitCost: item.averageUnitCost,
+        currentStockValue: item.remainingValue,
+        status: item.remainingQty < 0 ? "CHECK: negative stock" : "OK"
+    }));
+    const csvCell = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const headers = ["Ingredient", "Unit", "Purchased", "Used in Production", "Wastage", "Current Balance", "Average Unit Cost (INR)", "Current Stock Value (INR)", "Status"];
+    const lines = [headers, ...rows.map(r => [r.ingredient, r.unit, r.purchased, r.usedInProduction, r.wastage, r.currentBalance, r.averageUnitCost, r.currentStockValue, r.status])]
+        .map(row => row.map(csvCell).join(","));
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `NAINIKA-BAKES-stock-reconciliation-${todayString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+document.getElementById("exportStockReconciliation")?.addEventListener("click", exportStockReconciliation);
 
 function renderStock() {
     const stock = getStockLedger();
@@ -1404,7 +1513,39 @@ function renderAll() {
     renderSales();
     renderDashboard();
     renderReports();
+    applySectionSearches();
 }
+
+
+
+/* ---------------- SEPARATE HISTORY / STOCK SEARCHES ---------------- */
+function applySectionSearches() {
+    const term = (id) => (document.getElementById(id)?.value || "").trim().toLocaleLowerCase();
+    const purchaseTerm = term("purchaseHistorySearch");
+    const purchase = document.getElementById("purchaseHistory");
+    if (purchase) {
+        const rows = [...purchase.querySelectorAll("tbody tr")];
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (row.classList.contains("purchase-bill-group-row")) {
+                const detail = rows[i + 1]?.classList.contains("purchase-bill-details") ? rows[i + 1] : null;
+                const matches = !purchaseTerm || row.textContent.toLocaleLowerCase().includes(purchaseTerm) || (detail && detail.textContent.toLocaleLowerCase().includes(purchaseTerm));
+                row.hidden = !matches;
+                if (detail) { if (!matches) { if (detail.dataset.preSearchHidden === undefined) detail.dataset.preSearchHidden = String(detail.hidden); detail.hidden = true; } else if (detail.dataset.preSearchHidden !== undefined) { detail.hidden = detail.dataset.preSearchHidden === "true"; delete detail.dataset.preSearchHidden; } }
+                if (detail) i++;
+            }
+        }
+    }
+    const stockTerm = term("stockSearch");
+    const stockTable = document.getElementById("stockTable");
+    if (stockTable) stockTable.querySelectorAll("tbody tr").forEach(row => { row.hidden = !!stockTerm && !row.textContent.toLocaleLowerCase().includes(stockTerm); });
+    const salesTerm = term("salesHistorySearch");
+    const sales = document.getElementById("salesHistory");
+    if (sales) sales.querySelectorAll("tbody tr").forEach(row => { row.hidden = !!salesTerm && !row.textContent.toLocaleLowerCase().includes(salesTerm); });
+}
+["purchaseHistorySearch", "stockSearch", "salesHistorySearch"].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", applySectionSearches);
+});
 
 /* ---------------- EXPORT BACKUP ---------------- */
 
