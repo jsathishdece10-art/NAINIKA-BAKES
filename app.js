@@ -383,13 +383,31 @@ function getStockLedger() {
         // Use the ingredient snapshot saved with this production. Recipe edits
         // must never rewrite the stock consumed by an older production.
         const ingredients = Array.isArray(prod.ingredients)
-            ? prod.ingredients
-            : (db.recipes.find(r => r.id === prod.recipeId)?.ingredients || []);
+    ? prod.ingredients
+    : (db.recipes.find(r => r.id === prod.recipeId)?.ingredients || []);
 
-        ingredients.forEach(ingredient => {
-            const item = getItem(ingredient.name, ingredient.unit);
-            item.usedQty += number(ingredient.qty) * number(prod.batches);
-        });
+const recipeMaster =
+    db.recipes.find(r => r.id === prod.recipeId);
+
+const ratio =
+    recipeMaster &&
+    recipeMaster.finishedWeight > 0
+        ? number(prod.actualWeight) /
+          number(recipeMaster.finishedWeight)
+        : 1;
+
+ingredients.forEach(ingredient => {
+
+    const item = getItem(
+        ingredient.name,
+        ingredient.unit
+    );
+
+   item.usedQty +=
+    number(ingredient.qty) *
+    number(prod.batches) *
+    number(prod.ratio || 1);
+});
     });
 
     db.wastage.forEach(w => {
@@ -825,8 +843,21 @@ document.getElementById("productionForm").addEventListener("submit", event => {
     }
 
     for (const ingredient of recipe.ingredients) {
-        const needed = ingredient.qty * batches;
-        let available = getIngredientStock(ingredient.name, ingredient.unit);
+
+    const ratio =
+    recipe.finishedWeight > 0
+        ? actualWeight / recipe.finishedWeight
+        : 1;
+
+    const needed =
+        ingredient.qty *
+        batches *
+        ratio;
+
+    let available = getIngredientStock(
+        ingredient.name,
+        ingredient.unit
+    );
         // While editing, add back the ingredients consumed by the old version of this production.
         if (editingProductionId) {
             const oldProduction = db.productions.find(p => p.id === editingProductionId);
@@ -880,6 +911,10 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         date: document.getElementById("productionDate").value,
         recipeId,
         recipeName: recipe.name,
+        ratio:
+    recipe.finishedWeight > 0
+        ? actualWeight / recipe.finishedWeight
+        : 1,
         // Freeze recipe ingredients at production time; future recipe edits
         // affect new production only, not existing stock history.
         ingredients: recipe.ingredients.map(item => ({
