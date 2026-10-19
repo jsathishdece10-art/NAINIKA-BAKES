@@ -332,6 +332,45 @@ document.getElementById("today").textContent =
  * Stock is derived from all transactions, avoiding separate manual balances.
  */
 
+/*
+ * Rename one ingredient consistently across every linked record.
+ * This prevents a spelling correction (for example, "Eggs" -> "Egg")
+ * from leaving old production/wastage usage under the previous name.
+ * Only records with the same internal stock unit are changed.
+ */
+function renameIngredientEverywhere(oldName, unit, newName) {
+    const oldKey = canonicalIngredientName(oldName);
+    const cleanNewName = String(newName || "").trim();
+    if (!oldKey || !cleanNewName) return false;
+
+    const isMatch = (name, recordUnit) =>
+        canonicalIngredientName(name) === oldKey && recordUnit === unit;
+
+    db.purchases.forEach(record => {
+        if (isMatch(record.name, record.baseUnit)) record.name = cleanNewName;
+    });
+
+    db.recipes.forEach(recipe => {
+        if (!Array.isArray(recipe.ingredients)) return;
+        recipe.ingredients.forEach(ingredient => {
+            if (isMatch(ingredient.name, ingredient.unit)) ingredient.name = cleanNewName;
+        });
+    });
+
+    db.productions.forEach(production => {
+        if (!Array.isArray(production.ingredients)) return;
+        production.ingredients.forEach(ingredient => {
+            if (isMatch(ingredient.name, ingredient.unit)) ingredient.name = cleanNewName;
+        });
+    });
+
+    db.wastage.forEach(record => {
+        if (isMatch(record.name, record.unit)) record.name = cleanNewName;
+    });
+
+    return true;
+}
+
 function getIngredientNames() {
     const names = new Map();
 
@@ -590,6 +629,21 @@ purchaseForm.addEventListener("submit", function (event) {
             alert("Purchase record not found. Please refresh and try again.");
             return;
         }
+        const previousPurchase = db.purchases[index];
+        const previousName = previousPurchase.name;
+        const previousUnit = previousPurchase.baseUnit;
+
+        if (canonicalIngredientName(previousName) !== canonicalIngredientName(item.name)) {
+            const confirmed = confirm(
+                `Is "${item.name}" the corrected name for the same ingredient "${previousName}"?\n\n` +
+                `If you choose OK, matching purchase, recipe, production, and wastage records ` +
+                `with the same stock unit will be renamed so stock balances remain consistent.\n\n` +
+                `If this is a different ingredient, choose Cancel and create a new purchase instead.`
+            );
+            if (!confirmed) return;
+            renameIngredientEverywhere(previousName, previousUnit, item.name);
+        }
+
         db.purchases[index] = { ...db.purchases[index], ...item, date, supplier, billNo };
         editingPurchaseId = null;
         const submitButton = purchaseForm.querySelector('button[type="submit"]');
@@ -1237,9 +1291,41 @@ function renderStock() {
         `<strong class="${item.remainingQty < 0 ? "bad" : "good"}">${item.remainingQty.toFixed(3)}</strong>`,
         escapeHTML(item.unit),
         money(item.remainingValue),
+        `<button type="button" data-rename-ingredient="${escapeHTML(item.key)}">Rename</button> ` +
         `<button type="button" data-delete-ingredient="${escapeHTML(item.key)}">Delete</button>`
     ])
 );
+
+document.querySelectorAll("[data-rename-ingredient]").forEach(button => {
+    button.addEventListener("click", () => {
+        const ingredientKey = button.dataset.renameIngredient;
+        const item = getStockLedger().find(entry => entry.key === ingredientKey);
+        if (!item) return;
+
+        const newName = prompt(`Enter the corrected name for "${item.name}":`, item.name);
+        if (newName === null) return;
+
+        const cleanNewName = newName.trim();
+        if (!cleanNewName) {
+            alert("Ingredient name cannot be empty.");
+            return;
+        }
+        if (canonicalIngredientName(cleanNewName) === canonicalIngredientName(item.name)) {
+            alert("This name is the same for stock matching. No changes were needed.");
+            return;
+        }
+
+        const confirmed = confirm(
+            `Rename "${item.name}" to "${cleanNewName}" across all matching purchase, recipe, production, and wastage records?\n\n` +
+            `Use this only when both names refer to the SAME ingredient. Records with other stock units will not be changed.`
+        );
+        if (!confirmed) return;
+
+        renameIngredientEverywhere(item.name, item.unit, cleanNewName);
+        saveDB();
+        alert(`Ingredient renamed to "${cleanNewName}". Stock has been recalculated from the saved records.`);
+    });
+});
 
 document.querySelectorAll("[data-delete-ingredient]").forEach(button => {
     button.addEventListener("click", () => {
