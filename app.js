@@ -1319,6 +1319,76 @@ document.querySelectorAll("[data-delete-ingredient]").forEach(button => {
         </option>
     `).join("");
 }
+function renameIngredientEverywhere(
+    oldName,
+    newName,
+    unit
+) {
+
+    const oldCanonical =
+        canonicalIngredientName(oldName);
+
+    db.purchases.forEach(p => {
+
+        if (
+            canonicalIngredientName(p.name) === oldCanonical &&
+            p.baseUnit === unit
+        ) {
+            p.name = newName;
+        }
+
+    });
+
+    db.recipes.forEach(recipe => {
+
+        recipe.ingredients.forEach(ing => {
+
+            if (
+                canonicalIngredientName(ing.name) === oldCanonical &&
+                ing.unit === unit
+            ) {
+                ing.name = newName;
+            }
+
+        });
+
+    });
+
+    db.productions.forEach(prod => {
+
+        if (Array.isArray(prod.ingredients)) {
+
+            prod.ingredients.forEach(ing => {
+
+                if (
+                    canonicalIngredientName(ing.name) === oldCanonical &&
+                    ing.unit === unit
+                ) {
+                    ing.name = newName;
+                }
+
+            });
+
+        }
+
+    });
+
+    db.wastage.forEach(w => {
+
+        if (
+            canonicalIngredientName(w.name) === oldCanonical &&
+            w.unit === unit
+        ) {
+            w.name = newName;
+        }
+
+    });
+
+    saveDB();
+
+    alert(`${oldName} renamed to ${newName}`);
+
+}
 
 function renderRecipes() {
     document.getElementById("recipeList").innerHTML = table(
