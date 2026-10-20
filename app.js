@@ -1237,10 +1237,49 @@ function renderStock() {
         `<strong class="${item.remainingQty < 0 ? "bad" : "good"}">${item.remainingQty.toFixed(3)}</strong>`,
         escapeHTML(item.unit),
         money(item.remainingValue),
-        `<button type="button" data-delete-ingredient="${escapeHTML(item.key)}">Delete</button>`
+        `
+<button type="button"
+data-rename-ingredient="${escapeHTML(item.key)}">
+Rename
+</button>
+
+<button type="button"
+data-delete-ingredient="${escapeHTML(item.key)}">
+Delete
+</button>
+`
     ])
 );
+document.querySelectorAll("[data-rename-ingredient]").forEach(button => {
 
+    button.addEventListener("click", () => {
+
+        const ingredientKey =
+        button.dataset.renameIngredient;
+
+        const item =
+        getStockLedger().find(
+            i => i.key === ingredientKey
+        );
+
+        if (!item) return;
+
+        const newName = prompt(
+            "Rename Ingredient",
+            item.name
+        );
+
+        if (!newName || !newName.trim()) return;
+
+        renameIngredientEverywhere(
+            item.name,
+            newName.trim(),
+            item.unit
+        );
+
+    });
+
+});
 document.querySelectorAll("[data-delete-ingredient]").forEach(button => {
     button.addEventListener("click", () => {
         const ingredientKey = button.dataset.deleteIngredient;
