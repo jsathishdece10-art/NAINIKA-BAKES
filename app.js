@@ -839,6 +839,7 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
         editingRecipeId = null;
         const recipeSubmit = document.querySelector("#recipeForm button[type=submit]");
         if (recipeSubmit) recipeSubmit.textContent = "Save Recipe";
+        recalculateSalesForRecipe(recipe);
         saveDB();
         updateRecipeResult(recipe);
         event.target.reset();
@@ -849,7 +850,64 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
         alert(error.message);
     }
 });
+// Automatically update existing sales when a saved recipe changes
+function recalculateSalesForRecipe(recipe) {
+    if (!recipe || !Array.isArray(db.sales)) return;
 
+    const updatedSales = db.sales.map(sale => {
+        // Match sales using the recipe ID.
+        // For older records without an ID, use the product name.
+        const matchesRecipe =
+            sale.recipeId === recipe.id ||
+            (
+                !sale.recipeId &&
+                String(sale.product || "").trim().toLowerCase() ===
+                String(recipe.name || "").trim().toLowerCase()
+            );
+
+        if (!matchesRecipe) return sale;
+
+        const weight = number(sale.weight);
+        const qty = number(sale.qty);
+
+        const price = number(sale.price);
+        const packaging = number(sale.packaging);
+        const extra = number(sale.extra);
+
+        const revenue = price * qty;
+        const ingredientCost =
+            number(recipe.costPerGram) * weight * qty;
+
+        const totalPackaging = packaging * qty;
+        const totalExtra = extra * qty;
+
+        const totalCost =
+            ingredientCost + totalPackaging + totalExtra;
+
+        return {
+            ...sale,
+            product: recipe.name,
+            revenue,
+            ingredientCost,
+            totalCost,
+            profit: revenue - totalCost,
+
+            // Update ingredient details for the existing sale.
+            ingredientBreakdown: (recipe.ingredients || []).map(item => ({
+                name: item.name,
+                unit: item.unit,
+                qty: number(item.qty) *
+                     (weight * qty) /
+                     Math.max(1, number(recipe.finishedWeight)),
+                cost: number(item.cost) *
+                      (weight * qty) /
+                      Math.max(1, number(recipe.finishedWeight))
+            }))
+        };
+    });
+
+    db.sales = updatedSales;
+}
 function updateRecipeResult(recipe) {
     const result = document.getElementById("recipeResult");
 
