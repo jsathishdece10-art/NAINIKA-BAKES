@@ -667,6 +667,26 @@ footer { position:relative; z-index:1; color:#907c70; padding:14px 4px 0; }
   .dashboard-welcome-strip::before { flex-basis:55px; min-height:65px; }
   .dashboard-logo-large-wrap { width:70px; height:70px; flex-basis:70px; }
 }
+/* Mobile Dashboard Number Display Fix */
+@media (max-width: 650px) {
+    .dashboard-stat-cards .card {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .dashboard-stat-cards .stat-copy {
+        min-width: 0;
+        flex: 1 1 0;
+    }
+
+    .dashboard-stat-cards .stat-copy h2 {
+        font-size: clamp(14px, 3.5vw, 18px) !important;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        line-height: 1.3;
+    }
+}
 /* NAINIKA BAKES Dashboard heading font */
 h1,
 .dashboard-title {
