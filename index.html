@@ -58,7 +58,7 @@
     <main class="main">
         <header class="header">
             <div class="header-copy">
-                <h1 id="pageTitle">Business Dashboard</h1>
+                <h1 id="pageTitle">NAINIKA BAKES Dashboard</h1>
                 <p>Welcome to NAINIKA BAKES <span class="header-tagline">| Manage your bakery business with ease 💗</span></p>
             </div>
             <div class="header-right">
@@ -150,7 +150,7 @@
                     <button class="primary" type="submit">Save Purchase</button>
                 </form>
 
-                <p class="hint">Unit cost is calculated automatically from quantity and total amount.</p>
+                
             </div>
 
             <div class="panel">
@@ -164,10 +164,10 @@
         <section id="stock" class="page hidden">
             <div class="panel">
                 <h2>📦 Ingredient Stock</h2>
-                <p>Available quantity = purchased quantity − quantity used − wastage.</p>
+                
                 <input class="section-search" id="stockSearch" type="search" placeholder="Search ingredients stock…" aria-label="Search ingredients stock">
                 <button type="button" id="exportStockReconciliation">Download Stock Reconciliation CSV</button>
-                <p class="muted">Stock is calculated from saved purchases − saved production ingredient usage − saved wastage. Sales reduce finished-product stock, not raw ingredients a second time. Negative balances mean a purchase, production, wastage, or unit entry needs checking; the app will not add stock automatically.</p>
+                
                 <div id="stockTable"></div>
             </div>
 
@@ -193,7 +193,7 @@
         <section id="recipe" class="page hidden">
             <div class="panel">
                 <h2>🍫 Recipe Costing</h2>
-                <p>Enter the quantity used for one full recipe batch. Cost is calculated from purchase prices.</p>
+                
 
                 <form id="recipeForm">
                     <div class="form-grid">
@@ -213,7 +213,7 @@
                     </div>
 
                     <h3>Recipe Ingredients</h3>
-                    <p class="hint">Select an ingredient from your purchase list and enter the quantity used.</p>
+                    
 
                     <div id="recipeRows"></div>
 
@@ -237,7 +237,7 @@
         <section id="production" class="page hidden">
             <div class="panel">
                 <h2>🧁 Production Entry</h2>
-                <p>Record production only after checking that enough ingredients are in stock.</p>
+                
 
                 <form id="productionForm" class="form-grid">
                     <label>Production Date
@@ -343,7 +343,7 @@
                 <p>Download your current records as a JSON backup file.</p>
                 <button id="exportBackup" class="primary">Download Backup</button>
                 <button id="exportSalesCSV" class="secondary">Export Sales CSV</button>
-                <p class="hint">This backup is not a substitute for Google Drive cloud storage.</p>
+                
             </div>
         </section>
 

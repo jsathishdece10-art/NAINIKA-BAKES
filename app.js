@@ -532,7 +532,7 @@ purchaseForm.innerHTML = `
         <strong>Total Bill Amount: ₹ <span id="purchaseGrandTotal">0.00</span></strong>
     </div>
     <button type="submit" style="margin-top:14px;">Save Purchase Bill</button>
-    <p><small>Unit cost is calculated automatically from quantity and total amount. Date will stay selected until you change it.</small></p>
+    
 `;
 const purchaseDateInput = document.getElementById("purchaseDate");
 purchaseDateInput.value = previousPurchaseDate;
@@ -1265,7 +1265,7 @@ function renderPurchases() {
     document.getElementById("purchaseHistory").innerHTML = `
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Date</th><th>Bill Number (click to view items)</th><th>Supplier</th><th>Items</th><th>Total Bill Amount (₹)</th></tr></thead>
+                <thead><tr><th>Date</th><th>Bill Number </th><th>Supplier</th><th>Items</th><th>Total Bill Amount (₹)</th></tr></thead>
                 <tbody>${groupRows}</tbody>
             </table>
         </div>
@@ -1838,12 +1838,7 @@ function renderReports() {
         <p>Estimated Cost of Products Sold: <strong>${money(productCosts)}</strong></p>
         <p>Current Ingredient Stock Value: <strong>${money(stockValue)}</strong></p>
         <p>Estimated Profit on Recorded Sales: <strong class="${profit >= 0 ? "good" : "bad"}">${money(profit)}</strong></p>
-        <small>
-            Profit is calculated from recipe ingredient cost plus the packaging and extra
-            costs entered on each sale. Unentered overheads and taxes are excluded.
-            Purchase spending is not subtracted a second time from sales profit because
-            remaining ingredients are still stock.
-        </small>
+        
     `;
 }
 
