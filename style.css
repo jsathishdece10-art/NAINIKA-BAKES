@@ -511,3 +511,159 @@ footer {
 .global-search-result strong { display:block; margin-bottom:3px; }
 .global-search-result span { font-size:13px; overflow-wrap:anywhere; }
 .global-search-empty { padding:10px; color:#766b64; }
+
+
+/* NAINIKA BAKES premium bakery look: unique soft theme per screen */
+.main { background: linear-gradient(145deg, #fffaf5 0%, #fff1f3 48%, #fff8e9 100%); }
+.header { padding: 18px 22px; border: 1px solid #f1dfd6; border-radius: 18px; background: rgba(255,255,255,.88); box-shadow: 0 6px 22px rgba(72,35,23,.06); }
+.page { padding: 2px; border-radius: 18px; }
+.page .panel, .page .card { border-radius: 16px; border: 1px solid rgba(232,205,190,.9); box-shadow: 0 7px 22px rgba(72,35,23,.055); }
+#dashboard { background: linear-gradient(150deg, rgba(255,246,238,.75), rgba(255,237,243,.55)); }
+#purchase { background: linear-gradient(145deg, #fff8ef, #fff0e2); }
+#stock { background: linear-gradient(145deg, #f1fbf5, #e8f5ed); }
+#recipe { background: linear-gradient(145deg, #fff4f6, #ffe9ef); }
+#production { background: linear-gradient(145deg, #fff8e8, #fff0d3); }
+#sales { background: linear-gradient(145deg, #fff0f4, #ffe5ec); }
+#reports { background: linear-gradient(145deg, #f5f2ff, #eaeaff); }
+.dashboard-hero { display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap; padding:24px; margin-bottom:22px; border-radius:22px; border:1px solid #edc9bb; background: radial-gradient(circle at top left, #fff 0%, #fff6f1 50%, #ffe7ed 100%); box-shadow:0 12px 32px rgba(91,43,28,.09); }
+.dashboard-brand-logo { display:block; width:min(100%, 320px); max-height:210px; object-fit:contain; border-radius:14px; mix-blend-mode:multiply; }
+.dashboard-welcome { text-align:left; max-width:420px; }
+.dashboard-welcome h2 { margin:0 0 10px; color:#63351f; font-size:clamp(22px, 2.5vw, 32px); }
+.dashboard-welcome p { margin:0 0 8px; color:#d34e72; font-weight:700; font-size:18px; }
+.dashboard-welcome span { color:#78635a; }
+#dashboard .card { background:rgba(255,255,255,.94); }
+#dashboard .card h2 { color:#7b3f22; }
+#purchase .panel { background:rgba(255,255,255,.92); }
+#stock .panel { background:rgba(255,255,255,.93); }
+#recipe .panel { background:rgba(255,255,255,.93); }
+#production .panel { background:rgba(255,255,255,.93); }
+#sales .panel { background:rgba(255,255,255,.93); }
+#reports .panel { background:rgba(255,255,255,.93); }
+@media (max-width:650px) { .main { padding:12px; } .dashboard-hero { padding:16px; gap:12px; } .dashboard-brand-logo { width:min(100%, 260px); max-height:170px; } .dashboard-welcome { text-align:center; } .header { padding:14px; } }
+
+/* Premium bakery dashboard styling — UI only; business logic and Firebase rules stay unchanged. */
+:root { --bakery-cream:#fff8f0; --bakery-pink:#e85d7d; --bakery-brown:#4b2418; --bakery-gold:#dca34e; }
+body { background:#fff7ef; }
+.sidebar { background:linear-gradient(180deg,#281610 0%,#3b1d14 72%,#4a2418 100%); box-shadow:8px 0 28px rgba(54,27,16,.12); }
+.sidebar h2 { letter-spacing:1.5px; font-family:Georgia,serif; }
+.subtitle { text-transform:uppercase; }
+.nav { border-radius:11px; transition:background .18s ease, transform .18s ease; }
+.nav:hover { transform:translateX(2px); background:rgba(232,93,125,.22); }
+.nav.active { background:linear-gradient(100deg,#f06d88,#d94f70); box-shadow:0 7px 18px rgba(232,93,125,.2); }
+.main { position:relative; overflow:hidden; padding:20px 24px 26px; background:radial-gradient(ellipse at 88% 3%,rgba(246,196,164,.34),transparent 26%),radial-gradient(ellipse at 3% 60%,rgba(250,218,224,.3),transparent 30%),linear-gradient(135deg,#fffaf4,#fff2ed 58%,#fff8f0); }
+.header { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:15px 20px; margin-bottom:20px; border:1px solid rgba(231,202,185,.78); border-radius:18px; background:rgba(255,255,255,.84); box-shadow:0 7px 22px rgba(75,36,24,.055); backdrop-filter:blur(8px); }
+.header h1 { color:#482317; font-family:Georgia,'Times New Roman',serif; font-size:clamp(23px,2vw,31px); }
+.header-tagline { color:#81716a; font-size:13px; font-weight:400; }
+.header-right { display:flex; align-items:center; gap:16px; flex-shrink:0; }
+.header-brand-logo { width:76px; height:76px; object-fit:cover; object-position:center; border-radius:50%; border:3px solid #fff; outline:2px solid #d9a24f; box-shadow:0 4px 14px rgba(91,45,25,.17); background:#fff; }
+#today { font-weight:600; }
+.page { position:relative; z-index:1; padding:0; }
+.hero.dashboard-hero { display:flex; align-items:center; justify-content:space-between; min-height:142px; padding:25px 30px; margin-bottom:17px; overflow:hidden; position:relative; border:1px solid #f1d8ca; border-radius:20px; color:#4b2418; background:linear-gradient(105deg,rgba(255,255,255,.96),rgba(255,239,238,.92) 58%,rgba(255,226,218,.8)); box-shadow:0 9px 24px rgba(75,36,24,.06); }
+.dashboard-welcome { max-width:720px; position:relative; z-index:1; }
+.dashboard-welcome .eyebrow { display:inline-block; margin-bottom:8px; color:#c64d6b; font-size:11px; font-weight:800; letter-spacing:2px; }
+.dashboard-welcome h2 { margin:0 0 7px; color:#4b2418; font-family:Georgia,'Times New Roman',serif; font-size:clamp(23px,2.2vw,32px); }
+.dashboard-welcome p { margin:0 0 6px; color:#d65072; font-size:15px; font-weight:700; }
+.dashboard-welcome span:last-child { color:#79665e; font-size:14px; }
+.hero-decoration { display:flex; align-items:center; gap:18px; padding-right:24px; color:rgba(216,83,114,.42); font-size:44px; transform:rotate(-8deg); }
+.hero-decoration span:nth-child(2) { color:rgba(220,163,78,.6); font-size:60px; }
+.cards { gap:14px; margin-bottom:18px; }
+.card { position:relative; overflow:hidden; padding:20px 21px; border:1px solid #f0dfd4; border-radius:17px; background:rgba(255,255,255,.92); box-shadow:0 6px 20px rgba(75,36,24,.055); }
+.card:before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:#e85d7d; }
+.card:nth-child(2):before { background:#78b98a; } .card:nth-child(3):before { background:#e5ad4e; } .card:nth-child(4):before { background:#d68ac0; }
+.card p { color:#76645c; font-weight:600; }
+.card h2 { color:#4b2418; font-size:clamp(20px,1.7vw,27px); }
+.card[role="button"] { cursor:pointer; transition:transform .16s ease,box-shadow .16s ease; }
+.card[role="button"]:hover { transform:translateY(-2px); box-shadow:0 10px 24px rgba(75,36,24,.1); }
+.panel { border:1px solid #f0dfd4; border-radius:17px; background:rgba(255,255,255,.93); box-shadow:0 6px 20px rgba(75,36,24,.045); padding:20px; margin-bottom:17px; }
+.panel h2,.panel h3 { color:#4b2418; font-family:Georgia,'Times New Roman',serif; }
+button, input, select, textarea { border-radius:9px; }
+button:not(.nav) { transition:filter .15s ease,transform .15s ease; }
+button:not(.nav):hover { filter:brightness(.98); }
+#purchase { --page-accent:#b87946; } #stock { --page-accent:#4d9a6a; } #recipe { --page-accent:#d65072; } #production { --page-accent:#c58d28; } #sales { --page-accent:#d65072; } #reports { --page-accent:#8570c8; }
+#purchase .panel h2,#stock .panel h2,#recipe .panel h2,#production .panel h2,#sales .panel h2,#reports .panel h2 { padding-bottom:10px; border-bottom:2px solid color-mix(in srgb,var(--page-accent) 25%,transparent); }
+#purchase .panel { background:linear-gradient(145deg,#fffdf9,#fff5e9); } #stock .panel { background:linear-gradient(145deg,#fff,#f2fbf4); } #recipe .panel { background:linear-gradient(145deg,#fff,#fff1f5); } #production .panel { background:linear-gradient(145deg,#fffef9,#fff6df); } #sales .panel { background:linear-gradient(145deg,#fff,#fff0f4); } #reports .panel { background:linear-gradient(145deg,#fff,#f5f2ff); }
+footer { position:relative; z-index:1; color:#907c70; padding:14px 4px 0; }
+@media (max-width:900px) { .sidebar { width:220px; } .main { padding:15px; } .header-brand-logo { width:62px;height:62px; } }
+@media (max-width:650px) { .layout { flex-direction:column; } .sidebar { width:100%; padding:14px; } .sidebar h2 { font-size:21px; } .subtitle { margin:5px 0 12px; } .nav { display:inline-block; width:auto; margin:3px; padding:10px; font-size:12px; } .footer-brand { display:none; } .main { padding:10px; } .header { padding:12px; align-items:flex-start; } .header-right { flex-direction:column-reverse; align-items:flex-end; gap:6px; } .header-brand-logo { width:54px;height:54px; } .header-tagline { display:none; } .hero.dashboard-hero { padding:20px; min-height:125px; } .hero-decoration { font-size:28px; gap:7px; padding-right:0; } .hero-decoration span:nth-child(2) { font-size:38px; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .card { padding:14px; } }
+
+/* Account toolbar: keep the signed-in email visible without covering the dashboard logo. */
+.cloud-toolbar {
+  position: fixed;
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  max-width: min(360px, calc(100vw - 32px));
+  background: rgba(255,250,245,.97);
+  box-shadow: 0 8px 24px rgba(72,35,23,.16);
+  backdrop-filter: blur(10px);
+}
+.header { position: relative; z-index: 1001; }
+.header-right { position: relative; z-index: 1002; }
+.header-brand-logo { position: relative; z-index: 1003; flex-shrink: 0; }
+@media (max-width: 650px) {
+  .cloud-toolbar {
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    max-width: calc(100vw - 16px);
+    font-size: 11px;
+  }
+}
+
+/* Dashboard redesigned to closely match the NAINIKA BAKES reference. */
+.bakery-dashboard{background:transparent!important;padding:0!important}
+.dashboard-welcome-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 26px;margin-bottom:16px;border:1px solid #f1d8ca;border-radius:20px;background:linear-gradient(100deg,rgba(255,250,246,.98),rgba(255,238,232,.92));box-shadow:0 8px 24px rgba(72,35,23,.06)}
+.dashboard-title-block{min-width:0}.dashboard-eyebrow{font-size:10px;font-weight:800;letter-spacing:2px;color:#d55373}.dashboard-title-block h2{margin:5px 0 7px;color:#482317;font:700 clamp(25px,2.5vw,36px) Georgia,'Times New Roman',serif}.dashboard-title-block p{margin:0;color:#68534a;font-size:14px}.dashboard-title-block p span{color:#8b7a72}
+.dashboard-logo-large-wrap{width:118px;height:118px;flex:0 0 118px;padding:4px;border-radius:50%;background:#fff;outline:2px solid #d9a24f;box-shadow:0 6px 20px #48231720}.dashboard-logo-large{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;background:#fff}
+.dashboard-stat-cards{gap:12px;margin-bottom:16px}.dashboard-stat-cards .card{display:flex;align-items:center;gap:13px;min-height:98px;margin:0;padding:16px;border-radius:18px}.dashboard-stat-cards .card:before{display:none}.stat-icon{display:grid;place-items:center;width:54px;height:54px;flex:0 0 54px;border-radius:50%;font-size:25px;background:#ffe1e7}.stat-sales .stat-icon{background:#d9f1dd}.stat-stock .stat-icon{background:#ffe5b8}.stat-profit .stat-icon{background:#ffdce8}.stat-copy{min-width:0;flex:1}.stat-copy p{margin:0 0 8px;font-size:13px;font-weight:500;color:#62483d}.stat-copy h2{margin:0!important;font-size:clamp(17px,1.55vw,25px)!important;overflow-wrap:anywhere}.stat-arrow{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#fbe1e4;color:#542a1b;font-size:26px;line-height:1}.stat-sales .stat-arrow{background:#c6e8c9}.stat-stock .stat-arrow{background:#ffdaa0}
+.dashboard-analytics-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(245px,.92fr) minmax(230px,.9fr);gap:13px;align-items:stretch;margin-bottom:14px}.chart-panel,.low-stock-panel,.recent-sales-panel{min-width:0;margin:0!important;padding:18px!important;border-radius:19px!important;background:rgba(255,255,255,.92)!important}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}.panel-heading h3{margin:0!important;padding:0!important;border:0!important;font-size:17px;color:#482317;white-space:normal}.panel-heading h3 span{font:500 12px Arial,sans-serif;color:#86736a}.chart-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6e5c52}.chart-legend span{display:flex;align-items:center;gap:5px}.chart-legend i{width:11px;height:11px;display:inline-block;border-radius:3px}.legend-sales{background:#f17d91}.legend-profit{background:#8a4a2a}.sales-chart{width:100%;min-height:220px}.sales-chart svg{display:block;width:100%;height:auto;overflow:visible}.product-chart-content{display:flex;align-items:center;justify-content:center;gap:14px;min-height:210px}.product-pie-chart{width:clamp(125px,12vw,170px);height:clamp(125px,12vw,170px);flex:0 0 auto;border-radius:50%;background:conic-gradient(#8a4a2a 0 50%,#f17d91 50% 100%);position:relative;box-shadow:inset 0 0 0 1px #ffffff70}.product-pie-chart:after{content:'';position:absolute;inset:34%;border-radius:50%;background:#fffaf7;box-shadow:0 0 0 1px #fff}.product-pie-legend{display:grid;gap:14px;min-width:0;font-size:12px}.pie-legend-row{display:grid;grid-template-columns:11px minmax(0,1fr);gap:7px;align-items:start}.pie-dot{width:11px;height:11px;margin-top:3px;border-radius:50%}.pie-legend-row strong{display:block;font-size:13px;color:#4b2a1d}.pie-legend-row small{display:block;margin-top:3px;color:#6f5d54}.low-stock-panel #lowStock{display:grid;gap:6px}.low-stock-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:#fff0f1;font-size:12px}.low-stock-item strong{white-space:nowrap;color:#d24c63;font-weight:700}.low-stock-item .stock-name{min-width:0;overflow-wrap:anywhere}.low-stock-panel #lowStock p{font-size:12px;line-height:1.5;margin:0}.recent-sales-panel{margin-bottom:14px!important}.view-all-sales{border:0;border-radius:22px;padding:9px 14px;background:#7b3f22;color:#fff;font-size:12px;white-space:nowrap}.recent-sales-panel table{min-width:650px}.recent-sales-panel th{background:#fff0dd}.recent-sales-panel td,.recent-sales-panel th{padding:10px 12px}.recent-sales-panel tbody tr:hover{background:#fff9f3}.product-cell-icon{display:inline-grid;place-items:center;width:29px;height:29px;margin-right:8px;border-radius:50%;background:#fff0e6;font-size:18px;vertical-align:middle}.dashboard-quick-actions{padding:16px 20px!important}.dashboard-quick-actions h3{margin-bottom:12px!important}.dashboard-quick-actions .actions button{border-radius:10px}
+@media(max-width:1150px){.dashboard-analytics-grid{grid-template-columns:minmax(0,1.4fr) minmax(230px,1fr)}.low-stock-panel{grid-column:1/-1}.low-stock-panel #lowStock{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.dashboard-welcome-strip{padding:16px;gap:12px}.dashboard-logo-large-wrap{width:88px;height:88px;flex-basis:88px}.dashboard-title-block p span{display:block;margin-top:4px}.dashboard-stat-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-stat-cards .card{gap:8px;padding:12px;min-height:86px}.stat-icon{width:38px;height:38px;flex-basis:38px;font-size:19px}.stat-arrow{display:none}.stat-copy p{font-size:11px}.stat-copy h2{font-size:16px!important}.dashboard-analytics-grid{grid-template-columns:1fr}.low-stock-panel{grid-column:auto}.low-stock-panel #lowStock{grid-template-columns:1fr 1fr}.product-chart-content{justify-content:flex-start}.sales-chart{min-height:180px}.panel-heading h3{font-size:15px}}
+@media(max-width:430px){.dashboard-logo-large-wrap{width:70px;height:70px;flex-basis:70px}.dashboard-title-block h2{font-size:23px}.dashboard-eyebrow{font-size:8px;letter-spacing:1px}.dashboard-title-block p{font-size:12px}.dashboard-stat-cards{gap:8px}.dashboard-stat-cards .card{padding:10px}.stat-icon{width:32px;height:32px;flex-basis:32px;font-size:16px}.low-stock-panel #lowStock{grid-template-columns:1fr}.product-chart-content{gap:10px}.product-pie-chart{width:118px;height:118px}}
+
+/* Requested refinements: account controls under Reports, brownie art on left, live date + time. */
+.cloud-toolbar {
+  position: static !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  max-width: none !important;
+  margin-top: 18px;
+  padding: 12px 10px !important;
+  color: #f9e8db;
+  background: rgba(255,255,255,.07) !important;
+  border: 1px solid rgba(255,225,204,.2);
+  border-radius: 10px;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: 11px !important;
+  overflow-wrap: anywhere;
+}
+.cloud-toolbar #signedInEmail { color: #fff2dc; }
+.cloud-toolbar #cloudStatus { color: #f4c665; }
+.cloud-toolbar #logoutButton { background: #e75b78; color: #fff; }
+.sidebar .footer-brand { margin-top: 14px; }
+#today { display:flex; flex-direction:column; align-items:flex-start; gap:3px; white-space:nowrap; }
+.today-date { font-size:13px; }
+.today-time { color:#d65072; font-size:13px; font-weight:800; }
+.dashboard-welcome-strip { position:relative; overflow:hidden; }
+.dashboard-welcome-strip::before {
+  content:""; display:block; align-self:stretch; flex:0 0 clamp(115px, 15vw, 190px); min-height:112px;
+  background-image:url('brownie-photo.jpg'); background-position:center; background-size:contain; background-repeat:no-repeat;
+  filter:drop-shadow(0 6px 10px rgba(72,35,23,.12));
+}
+.dashboard-title-block { flex:1; }
+.dashboard-logo-large-wrap { width:132px; height:132px; flex-basis:132px; }
+@media(max-width:760px) {
+  .cloud-toolbar { margin-top:12px; }
+  .dashboard-welcome-strip::before { flex-basis:78px; min-height:78px; background-size:contain; }
+  .dashboard-logo-large-wrap { width:88px; height:88px; flex-basis:88px; }
+  #today { white-space:normal; }
+}
+@media(max-width:430px) {
+  .dashboard-welcome-strip::before { flex-basis:55px; min-height:65px; }
+  .dashboard-logo-large-wrap { width:70px; height:70px; flex-basis:70px; }
+}

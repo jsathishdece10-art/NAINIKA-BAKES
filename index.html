@@ -39,9 +39,6 @@
   </div>
 </section>
 <div class="layout" hidden>
-    <div class="cloud-toolbar"><span>Account: <strong id="signedInEmail"></strong></span><span id="cloudStatus">Connecting to cloud…</span><button id="logoutButton" type="button" hidden>Sign Out</button></div>
-
-
     <aside class="sidebar">
         <h2>🍰 NAINIKA</h2>
         <p class="subtitle">BAKES BUSINESS MANAGER</p>
@@ -54,63 +51,62 @@
         <button class="nav" data-page="sales">💰 Sales Entry</button>
         <button class="nav" data-page="reports">📈 Reports</button>
 
+        <div class="cloud-toolbar"><span>Account: <strong id="signedInEmail"></strong></span><span id="cloudStatus">Connecting to cloud…</span><button id="logoutButton" type="button" hidden>Sign Out</button></div>
         <p class="footer-brand">Homemade with Love ❤️</p>
     </aside>
 
     <main class="main">
         <header class="header">
-            <div>
+            <div class="header-copy">
                 <h1 id="pageTitle">Business Dashboard</h1>
-                <p>Welcome to NAINIKA BAKES</p>
+                <p>Welcome to NAINIKA BAKES <span class="header-tagline">| Manage your bakery business with ease 💗</span></p>
             </div>
-            <span id="today"></span>
+            <div class="header-right">
+                <span id="today"></span>
+                <img class="header-brand-logo" src="nainika-logo.png" alt="Nainika Homemade Bakes logo">
+            </div>
         </header>
 
         <!-- DASHBOARD -->
-        <section id="dashboard" class="page">
-            <div class="hero">
-                <h2>Welcome to NAINIKA BAKES! 🍫</h2>
-                <p>Manage purchases, ingredients, recipes, production and sales.</p>
-            </div>
-
-            <div class="cards">
-                <div class="card">
-                    <p>Total Purchases</p>
-                    <h2 id="dashPurchase">₹0.00</h2>
+        <section id="dashboard" class="page bakery-dashboard">
+            <div class="dashboard-welcome-strip">
+                <div class="dashboard-title-block">
+                    <span class="dashboard-eyebrow">NAINIKA BAKES · HOMEMADE WITH LOVE</span>
+                    <h2>Business Dashboard</h2>
+                    <p>Welcome to NAINIKA BAKES <span> | Manage your bakery business with ease 💗</span></p>
                 </div>
-                <div class="card">
-                    <p>Total Sales</p>
-                    <h2 id="dashSales">₹0.00</h2>
-                </div>
-                <div class="card">
-                    <p>Stock Value</p>
-                    <h2 id="dashStock">₹0.00</h2>
-                </div>
-                <div class="card">
-                    <p>Estimated Profit</p>
-                    <h2 id="dashProfit">₹0.00</h2>
+                <div class="dashboard-logo-large-wrap">
+                    <img class="dashboard-logo-large" src="nainika-logo.png" alt="Nainika Homemade Bakes logo">
                 </div>
             </div>
 
-            <div class="panel">
-                <h3>Quick Actions</h3>
-                <div class="actions">
-                    <button data-go="purchase">+ Add Purchase</button>
-                    <button data-go="recipe">+ Add Recipe</button>
-                    <button data-go="production">+ Production</button>
-                    <button data-go="sales">+ Add Sale</button>
-                </div>
+            <div class="cards dashboard-stat-cards">
+                <div class="card stat-purchases" title="Click to view purchase details"><div class="stat-icon">🛒</div><div class="stat-copy"><p>Total Purchases</p><h2 id="dashPurchase">₹0.00</h2></div><span class="stat-arrow">›</span></div>
+                <div class="card stat-sales" title="Click to view sales breakdown"><div class="stat-icon">📈</div><div class="stat-copy"><p>Total Sales</p><h2 id="dashSales">₹0.00</h2></div><span class="stat-arrow">›</span></div>
+                <div class="card stat-stock"><div class="stat-icon">📦</div><div class="stat-copy"><p>Stock Value</p><h2 id="dashStock">₹0.00</h2></div></div>
+                <div class="card stat-profit"><div class="stat-icon">💰</div><div class="stat-copy"><p>Estimated Profit</p><h2 id="dashProfit">₹0.00</h2></div></div>
             </div>
 
-            <div class="panel">
-                <h3>Low Stock Alert</h3>
-                <div id="lowStock"></div>
+            <div class="dashboard-analytics-grid">
+                <section class="panel chart-panel sales-chart-panel">
+                    <div class="panel-heading"><h3>▥ Sales Overview <span>(Last 7 Days)</span></h3><div class="chart-legend"><span><i class="legend-sales"></i>Sales</span><span><i class="legend-profit"></i>Profit</span></div></div>
+                    <div id="salesChart" class="sales-chart" aria-label="Sales and profit bar chart"></div>
+                </section>
+                <section class="panel chart-panel product-chart-panel">
+                    <div class="panel-heading"><h3>▣ Product Wise Sales</h3></div>
+                    <div class="product-chart-content"><div id="productPieChart" class="product-pie-chart" aria-label="Product wise sales pie chart"></div><div id="productPieLegend" class="product-pie-legend"></div></div>
+                </section>
+                <section class="panel low-stock-panel">
+                    <div class="panel-heading"><h3>⚠ Low Stock Alert</h3></div>
+                    <div id="lowStock"></div>
+                </section>
             </div>
 
-            <div class="panel">
-                <h3>Recent Sales</h3>
+            <section class="panel recent-sales-panel">
+                <div class="panel-heading"><h3>▤ Recent Sales</h3><button type="button" class="view-all-sales" data-go="sales">View All Sales →</button></div>
                 <div id="recentSales"></div>
-            </div>
+            </section>
+            <div class="panel dashboard-quick-actions"><h3>Quick Actions</h3><div class="actions"><button data-go="purchase">+ Add Purchase</button><button data-go="recipe">+ Add Recipe</button><button data-go="production">+ Production</button><button data-go="sales">+ Add Sale</button></div></div>
         </section>
 
         <!-- PURCHASE -->

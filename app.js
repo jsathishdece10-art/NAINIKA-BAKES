@@ -307,12 +307,12 @@ document.querySelectorAll("[data-go]").forEach(button => {
     button.addEventListener("click", () => showPage(button.dataset.go));
 });
 
-document.getElementById("today").textContent =
-    new Date().toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
+function updateDashboardDateTime() {
+    const now = new Date();
+    document.getElementById("today").innerHTML = `<span class="today-date">${now.toLocaleDateString("en-IN", { weekday:"short", day:"2-digit", month:"short", year:"numeric" })}</span><span class="today-time">${now.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit", hour12:true })}</span>`;
+}
+updateDashboardDateTime();
+setInterval(updateDashboardDateTime, 30_000);
 
 [
     "purchaseDate",
@@ -1441,9 +1441,50 @@ function renderRecipes() {
             money(r.ingredientCost),
             money(r.costPerGram),
             money(r.sellingPrice),
-            `<button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
+            `<button type="button" data-view-recipe="${r.id}">View Ingredients</button> <button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
         ])
     );
+
+    // Additive feature: show the saved ingredient quantities and costs for a recipe.
+    let ingredientView = document.getElementById("recipeIngredientsView");
+    if (!ingredientView) {
+        ingredientView = document.createElement("div");
+        ingredientView.id = "recipeIngredientsView";
+        ingredientView.className = "panel";
+        ingredientView.hidden = true;
+        document.getElementById("recipeList").insertAdjacentElement("afterend", ingredientView);
+    }
+
+    document.querySelectorAll("[data-view-recipe]").forEach(button => {
+        button.addEventListener("click", () => {
+            const recipe = db.recipes.find(r => r.id === button.dataset.viewRecipe);
+            if (!recipe) return;
+            const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+            ingredientView.hidden = false;
+            ingredientView.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                    <h3>Ingredients — ${escapeHTML(recipe.name)}</h3>
+                    <button type="button" id="closeRecipeIngredientsView">✕ Close Ingredients</button>
+                </div>
+                <p>Batch weight: ${number(recipe.finishedWeight).toLocaleString("en-IN")} g</p>
+                ${table(
+                    ["Ingredient", "Quantity Used", "Ingredient Cost"],
+                    ingredients.map(item => [
+                        escapeHTML(item.name),
+                        `${number(item.qty).toLocaleString("en-IN", { maximumFractionDigits: 3 })} ${escapeHTML(item.unit)}`,
+                        money(item.cost)
+                    ])
+                )}
+                <p><strong>Total ingredient cost per batch: ${money(
+                    ingredients.reduce((sum, item) => sum + number(item.cost), 0)
+                )}</strong></p>
+            `;
+            document.getElementById("closeRecipeIngredientsView").addEventListener("click", () => {
+                ingredientView.hidden = true;
+            });
+            ingredientView.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+    });
 
     const options = db.recipes.map(r =>
         `<option value="${r.id}">${escapeHTML(r.name)}</option>`
@@ -1638,38 +1679,148 @@ function renderSales() {
     });
 }
 
+function getDashboardProductCategory(productName) {
+    const name = String(productName || "").toLowerCase().trim();
+
+    // Brownie takes priority, so e.g. "Chocolate Brownie" remains in Brownie.
+    if (name.includes("brownie")) return "Brownie";
+
+    // Group cake variants together, including names that omit the word "cake".
+    const cakeKeywords = [
+        "cake", "red velvet", "vanilla", "black forest", "white forest",
+        "pineapple", "butterscotch", "chocolate truffle", "blackcurrant",
+        "rasmalai", "mango cake", "strawberry cake", "coffee cake"
+    ];
+    if (cakeKeywords.some(keyword => name.includes(keyword))) return "Cake";
+
+    return "Other";
+}
+
+function showDashboardBreakdown(metric) {
+    let panel = document.getElementById("dashboardProductBreakdown");
+    // Clicking the same summary card again closes its details; no extra close button is needed.
+    if (panel && !panel.hidden && panel.dataset.metric === metric) {
+        panel.hidden = true;
+        panel.dataset.metric = "";
+        return;
+    }
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "dashboardProductBreakdown";
+        panel.className = "panel";
+        const cards = document.querySelector("#dashboard .cards");
+        if (cards) cards.insertAdjacentElement("afterend", panel);
+    }
+
+    if (metric === "purchases") {
+        const purchases = [...db.purchases].sort((a, b) =>
+            (b.date || "").localeCompare(a.date || "") || String(b.billNo || "").localeCompare(String(a.billNo || ""))
+        );
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <h3>Total Purchase Breakdown</h3>
+            </div>
+            ${table(["Date", "Bill Number", "Supplier", "Ingredient", "Quantity", "Purchase Amount"], purchases.map(p => [
+                escapeHTML(p.date || "—"), escapeHTML(p.billNo || "—"), escapeHTML(p.supplier || "—"),
+                escapeHTML(p.name || "—"), `${number(p.qty).toLocaleString("en-IN")} ${escapeHTML(p.unit || "")}`, money(p.amount)
+            ]))}
+        `;
+    } else {
+        const grouped = new Map();
+        db.sales.forEach(sale => {
+            const category = getDashboardProductCategory(sale.product);
+            if (!grouped.has(category)) grouped.set(category, { category, qty: 0, revenue: 0, profit: 0, products: new Map() });
+            const group = grouped.get(category);
+            const qty = number(sale.qty), revenue = number(sale.revenue), profit = number(sale.profit);
+            group.qty += qty; group.revenue += revenue; group.profit += profit;
+            const productName = String(sale.product || "Unknown product");
+            if (!group.products.has(productName)) group.products.set(productName, { qty: 0, revenue: 0, profit: 0 });
+            const product = group.products.get(productName);
+            product.qty += qty; product.revenue += revenue; product.profit += profit;
+        });
+        const rows = [];
+        ["Brownie", "Cake", "Other"].forEach(category => {
+            const group = grouped.get(category);
+            if (!group) return;
+            rows.push([`<strong>${escapeHTML(category)}</strong>`, group.qty.toLocaleString("en-IN"), money(group.revenue), money(group.profit)]);
+            [...group.products.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, product]) => {
+                rows.push([`↳ ${escapeHTML(name)}`, product.qty.toLocaleString("en-IN"), money(product.revenue), money(product.profit)]);
+            });
+        });
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <h3>Total Sales Breakdown</h3>
+            </div>
+            <p>Quantity and revenue are grouped by product category. Cake variants such as Red Velvet and Vanilla are grouped under Cake.</p>
+            ${table(["Category / Product", "Quantity Sold", "Sales Revenue", "Estimated Profit"], rows)}
+        `;
+    }
+    panel.dataset.metric = metric;
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 function renderDashboard() {
-    const purchaseTotal = db.purchases.reduce((sum, p) => sum + p.amount, 0);
-    const salesTotal = db.sales.reduce((sum, s) => sum + s.revenue, 0);
-    const salesProfit = db.sales.reduce((sum, s) => sum + s.profit, 0);
-
-    const stockValue = getStockLedger().reduce((sum, item) =>
-        sum + item.remainingValue, 0
-    );
-
+    const purchaseTotal = db.purchases.reduce((sum, p) => sum + number(p.amount), 0);
+    const salesTotal = db.sales.reduce((sum, s) => sum + number(s.revenue), 0);
+    const salesProfit = db.sales.reduce((sum, s) => sum + number(s.profit), 0);
+    const stockValue = getStockLedger().reduce((sum, item) => sum + number(item.remainingValue), 0);
     document.getElementById("dashPurchase").textContent = money(purchaseTotal);
     document.getElementById("dashSales").textContent = money(salesTotal);
     document.getElementById("dashStock").textContent = money(stockValue);
     document.getElementById("dashProfit").textContent = money(salesProfit);
 
-    const lowItems = getStockLedger().filter(item =>
-        item.remainingQty <= 0
-    );
+    const salesCard = document.getElementById("dashSales")?.closest(".card");
+    const purchaseCard = document.getElementById("dashPurchase")?.closest(".card");
+    [[salesCard, "sales", "Click to view category and product-wise sales"], [purchaseCard, "purchases", "Click to view purchase details"]].forEach(([card, metric, title]) => {
+        if (!card) return;
+        card.title = title; card.setAttribute("role", "button"); card.setAttribute("tabindex", "0");
+        card.onclick = () => showDashboardBreakdown(metric);
+        card.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showDashboardBreakdown(metric); } };
+    });
 
+    // Real last-seven-day bar chart using recorded sales and profit values.
+    const dayNames = [];
+    const dayTotals = new Map();
+    const today = new Date(); today.setHours(0,0,0,0);
+    for (let offset = 6; offset >= 0; offset--) {
+        const d = new Date(today); d.setDate(today.getDate() - offset);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        dayNames.push({ key, label: d.toLocaleDateString("en-IN", { day:"2-digit", month:"short" }) });
+        dayTotals.set(key, { sales:0, profit:0 });
+    }
+    db.sales.forEach(s => { const bucket = dayTotals.get(String(s.date || "").slice(0,10)); if (bucket) { bucket.sales += number(s.revenue); bucket.profit += number(s.profit); } });
+    const maxValue = Math.max(1, ...[...dayTotals.values()].flatMap(v => [v.sales,v.profit]));
+    const chartW=520, chartH=205, left=38, right=8, top=12, bottom=30, plotH=chartH-top-bottom, plotW=chartW-left-right;
+    const roundedMax = Math.ceil(maxValue / (maxValue > 1000 ? 500 : maxValue > 300 ? 100 : 50)) * (maxValue > 1000 ? 500 : maxValue > 300 ? 100 : 50) || 100;
+    const grid = [0,1,2,3].map(i => { const y=top+plotH*i/3; const val=Math.round(roundedMax*(3-i)/3); return `<line x1="${left}" y1="${y}" x2="${chartW-right}" y2="${y}" stroke="#eadfd7" stroke-dasharray="3 4"/><text x="${left-7}" y="${y+4}" text-anchor="end" fill="#8a7b72" font-size="10">${val>=1000?(val/1000).toFixed(val%1000?1:0)+"k":val}</text>`; }).join("");
+    const bars = dayNames.map((day,i) => { const v=dayTotals.get(day.key); const groupW=plotW/7, barW=Math.min(13,groupW*.25), x=left+i*groupW+groupW/2; const hs=v.sales/roundedMax*plotH, hp=v.profit/roundedMax*plotH; return `<rect x="${x-barW-1}" y="${top+plotH-hs}" width="${barW}" height="${Math.max(0,hs)}" rx="3" fill="#f17d91"><title>${day.label} Sales: ${money(v.sales)}</title></rect><rect x="${x+2}" y="${top+plotH-hp}" width="${barW}" height="${Math.max(0,hp)}" rx="3" fill="#8a4a2a"><title>${day.label} Profit: ${money(v.profit)}</title></rect><text x="${x}" y="${chartH-9}" text-anchor="middle" fill="#766860" font-size="10">${day.label}</text>`; }).join("");
+    const chart = document.getElementById("salesChart");
+    if (chart) chart.innerHTML = `<svg viewBox="0 0 ${chartW} ${chartH}" role="img" aria-label="Sales and profit over the last seven days">${grid}${bars}</svg>`;
+
+    const categoryTotals = new Map([["Brownie",0],["Cake",0],["Other",0]]);
+    db.sales.forEach(s => { const cat=getDashboardProductCategory(s.product); categoryTotals.set(cat,(categoryTotals.get(cat)||0)+number(s.revenue)); });
+    const totalCategoryRevenue=[...categoryTotals.values()].reduce((a,b)=>a+b,0);
+    const brownie=categoryTotals.get("Brownie")||0, cake=categoryTotals.get("Cake")||0, other=categoryTotals.get("Other")||0;
+    const browniePct=totalCategoryRevenue ? brownie/totalCategoryRevenue*100 : 0;
+    const cakePct=totalCategoryRevenue ? cake/totalCategoryRevenue*100 : 0;
+    const pie=document.getElementById("productPieChart");
+    if(pie) pie.style.background=`conic-gradient(#8a4a2a 0% ${browniePct}%, #f17d91 ${browniePct}% ${browniePct+cakePct}%, #dca34e ${browniePct+cakePct}% 100%)`;
+    const legend=document.getElementById("productPieLegend");
+    if(legend) legend.innerHTML=[["Brownie",brownie,"#8a4a2a"],["Cake",cake,"#f17d91"],["Other",other,"#dca34e"]].filter(x=>x[1]>0 || totalCategoryRevenue===0).map(([name,value,color])=>`<div class="pie-legend-row"><i class="pie-dot" style="background:${color}"></i><div><strong>${escapeHTML(name)}</strong><small>${money(value)}${totalCategoryRevenue?` · ${Math.round(value/totalCategoryRevenue*100)}%`:""}</small></div></div>`).join("");
+
+    const lowItems = getStockLedger().filter(item => number(item.remainingQty) <= 0.25);
     document.getElementById("lowStock").innerHTML = lowItems.length
-        ? lowItems.map(item =>
-            `<p class="bad">${escapeHTML(item.name)}: ${item.remainingQty.toFixed(3)} ${escapeHTML(item.unit)}</p>`
-          ).join("")
-        : "<p>No ingredients currently at zero or below stock.</p>";
+        ? lowItems.slice(0,8).map(item => `<div class="low-stock-item"><span class="stock-name">${escapeHTML(item.name)}</span><strong>${number(item.remainingQty).toFixed(2)} ${escapeHTML(item.unit)}</strong></div>`).join("")
+        : "<p class=\"good\">✓ No ingredients currently at zero or below stock.</p>";
 
     document.getElementById("recentSales").innerHTML = table(
-        ["Date", "Product", "Revenue", "Profit"],
-        [...db.sales].slice(-5).reverse().map(s => [
-            escapeHTML(s.date),
-            escapeHTML(s.product),
-            money(s.revenue),
-            money(s.profit)
-        ])
+        ["", "Date", "Product", "Quantity", "Amount", "Estimated Profit"],
+        [...db.sales].slice(-5).reverse().map(s => {
+            const cat=getDashboardProductCategory(s.product);
+            const icon=cat==="Brownie"?"🍫":cat==="Cake"?"🍰":"🧁";
+            return [`<span class="product-cell-icon" aria-hidden="true">${icon}</span>`,escapeHTML(s.date),escapeHTML(s.product),number(s.qty).toLocaleString("en-IN"),money(s.revenue),money(s.profit)];
+        })
     );
 }
 
