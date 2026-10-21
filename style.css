@@ -702,3 +702,25 @@ h1,
     font-weight: 400;
     color: #806f66;
 }
+/* Fix mobile dashboard purchase and sales amounts */
+@media (max-width: 650px) {
+    .dashboard-stat-cards .card:nth-child(1),
+    .dashboard-stat-cards .card:nth-child(2) {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dashboard-stat-cards .card:nth-child(1) .stat-copy,
+    .dashboard-stat-cards .card:nth-child(2) .stat-copy {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .dashboard-stat-cards .card:nth-child(1) .stat-copy h2,
+    .dashboard-stat-cards .card:nth-child(2) .stat-copy h2 {
+        font-size: 16px !important;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+}
