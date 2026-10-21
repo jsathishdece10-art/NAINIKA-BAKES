@@ -1751,7 +1751,7 @@ function showDashboardBreakdown(metric) {
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
                 <h3>Total Sales Breakdown</h3>
             </div>
-            <p>Quantity and revenue are grouped by product category. Cake variants such as Red Velvet and Vanilla are grouped under Cake.</p>
+            <p>Quantity and revenue are grouped by product category. Cake variants such as Red Velvet and Vanilla and Black Forest and white forest and cup cakes are grouped under Cake.</p>
             ${table(["Category / Product", "Quantity Sold", "Sales Revenue", "Estimated Profit"], rows)}
         `;
     }
