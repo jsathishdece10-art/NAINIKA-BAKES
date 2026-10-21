@@ -1441,7 +1441,7 @@ function renderRecipes() {
             money(r.ingredientCost),
             money(r.costPerGram),
             money(r.sellingPrice),
-            `<button type="button" data-view-recipe="${r.id}">View Ingredients</button> <button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
+            `<button type="button" data-view-recipe="${r.id}">View</button> <button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
         ])
     );
 
@@ -1464,7 +1464,7 @@ function renderRecipes() {
             ingredientView.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
                     <h3>Ingredients — ${escapeHTML(recipe.name)}</h3>
-                    <button type="button" id="closeRecipeIngredientsView">✕ Close Ingredients</button>
+                    <button type="button" id="closeRecipeIngredientsView">✕ Close </button>
                 </div>
                 <p>Batch weight: ${number(recipe.finishedWeight).toLocaleString("en-IN")} g</p>
                 ${table(
