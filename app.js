@@ -176,8 +176,8 @@ function money(value) {
     return Number(value || 0).toLocaleString("en-IN", {
         style: "currency",
         currency: "INR",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
     });
 }
 
@@ -375,6 +375,7 @@ function getIngredientNames() {
     const names = new Map();
 
     db.purchases.forEach(p => {
+        if (String(p.category || "Ingredients").toLowerCase() !== "ingredients") return;
         const key = `${canonicalIngredientName(p.name)}|${p.baseUnit}`;
         if (!names.has(key)) {
             names.set(key, {
@@ -413,6 +414,7 @@ function getStockLedger() {
     }
 
     db.purchases.forEach(p => {
+        if (String(p.category || "Ingredients").toLowerCase() !== "ingredients") return;
         const item = getItem(p.name, p.baseUnit);
         item.purchasedQty += p.baseQty;
         item.purchasedValue += p.amount;
@@ -480,6 +482,7 @@ function getIngredientStock(name, unit) {
 
 function getPurchaseCost(name, unit, qty) {
     const purchases = db.purchases.filter(p =>
+        String(p.category || "Ingredients").toLowerCase() === "ingredients" &&
         canonicalIngredientName(p.name) === canonicalIngredientName(name) &&
         p.baseUnit === unit
     );
@@ -494,6 +497,7 @@ function getPurchaseCost(name, unit, qty) {
 
 function getPurchaseUnitCost(name, unit) {
     const purchases = db.purchases.filter(p =>
+        String(p.category || "Ingredients").toLowerCase() === "ingredients" &&
         canonicalIngredientName(p.name) === canonicalIngredientName(name) &&
         p.baseUnit === unit
     );
@@ -522,10 +526,10 @@ purchaseForm.innerHTML = `
         </label>
     </div>
     <div style="overflow-x:auto;">
-        <div style="display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) minmax(120px,1fr) minmax(140px,1.3fr);gap:8px;min-width:720px;font-weight:700;margin-bottom:8px;">
-            <span>Ingredient / Item</span><span>Purchased Qty</span><span>Unit</span><span>Total Amount (₹)</span><span>Action</span>
+        <div style="display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) minmax(120px,1fr) minmax(130px,1fr) minmax(140px,1.3fr);gap:8px;min-width:850px;font-weight:700;margin-bottom:8px;">
+            <span>Ingredient / Item</span><span>Purchased Qty</span><span>Unit</span><span>Total Amount (₹)</span><span>Category</span><span>Action</span>
         </div>
-        <div id="purchaseItems" style="min-width:720px;"></div>
+        <div id="purchaseItems" style="min-width:850px;"></div>
     </div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px;">
         <button type="button" id="addPurchaseItem">+ Add Item</button>
@@ -552,7 +556,7 @@ function updatePurchaseTotal() {
 function addPurchaseItemRow(initial = {}) {
     const row = document.createElement("div");
     row.className = "purchase-item-row";
-    row.style.cssText = "display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) minmax(120px,1fr) minmax(140px,1.3fr);gap:8px;margin-bottom:8px;align-items:center;min-width:720px;";
+    row.style.cssText = "display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) minmax(120px,1fr) minmax(130px,1fr) minmax(140px,1.3fr);gap:8px;margin-bottom:8px;align-items:center;min-width:850px;";
     row.innerHTML = `
         <input type="text" class="item-name" placeholder="Ingredient / Item" required>
         <input type="number" class="item-qty" min="0.001" step="any" placeholder="Quantity" required>
@@ -562,12 +566,14 @@ function addPurchaseItemRow(initial = {}) {
             <option value="Pieces">Pieces</option><option value="Packets">Packets</option>
         </select>
         <input type="number" class="item-amount" min="0.01" step="0.01" placeholder="Amount (₹)" required>
+        <select class="item-category" aria-label="Purchase category"><option value="Ingredients">Ingredients</option><option value="Asset">Asset</option></select>
         <button type="button" class="remove-purchase-item">Remove</button>
     `;
     row.querySelector(".item-name").value = initial.name || "";
     row.querySelector(".item-qty").value = initial.qty ?? "";
     row.querySelector(".item-unit").value = initial.unit || "g";
     row.querySelector(".item-amount").value = initial.amount ?? "";
+    row.querySelector(".item-category").value = initial.category || "Ingredients";
     purchaseItemsContainer.appendChild(row);
 }
 
@@ -609,11 +615,12 @@ purchaseForm.addEventListener("submit", function (event) {
         const qty = Number(row.querySelector(".item-qty").value);
         const unit = row.querySelector(".item-unit").value;
         const amount = Number(row.querySelector(".item-amount").value);
+        const category = row.querySelector(".item-category").value || "Ingredients";
         if (!name || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(amount) || amount <= 0) {
             alert("Ella item-kum name, valid quantity, amount enter pannunga.");
             return;
         }
-        items.push({ name, qty, unit, baseQty: toBaseQty(qty, unit), baseUnit: baseUnit(unit), amount });
+        items.push({ name, qty, unit, baseQty: toBaseQty(qty, unit), baseUnit: baseUnit(unit), amount, category });
     }
 
     const wasEditingPurchase = Boolean(editingPurchaseId);
@@ -817,7 +824,7 @@ document.getElementById("recipeForm").addEventListener("submit", event => {
 
         const existing = editingRecipeId
             ? db.recipes.find(r => r.id === editingRecipeId)
-            : db.recipes.find(r => r.name.toLowerCase() === name.toLowerCase());
+            : db.recipes.find(r => r.name.toLowerCase() === name.toLowerCase() && number(r.finishedWeight) === finishedWeight);
 
         const recipe = {
             id: existing ? existing.id : id(),
@@ -980,7 +987,7 @@ document.getElementById("productionForm").addEventListener("submit", event => {
             const oldIngredient = oldIngredients.find(i =>
                 canonicalIngredientName(i.name) === canonicalIngredientName(ingredient.name) && i.unit === ingredient.unit
             );
-            if (oldIngredient) available += number(oldIngredient.qty) * number(oldProduction.batches);
+            if (oldIngredient) available += number(oldIngredient.qty) * number(oldProduction.batches) * number(oldProduction.ratio || 1);
         }
 
         if (available < needed) {
@@ -1039,7 +1046,7 @@ document.getElementById("productionForm").addEventListener("submit", event => {
         actualWeight,
         wastage,
         saleableWeight: Math.max(0, actualWeight - wastage),
-        ingredientCost: recipe.ingredientCost * batches
+        ingredientCost: recipe.ingredientCost * batches * (recipe.finishedWeight > 0 ? actualWeight / recipe.finishedWeight : 1)
     };
 
     if (editingProductionId) {
@@ -1235,6 +1242,7 @@ function renderPurchases() {
                 <td>${displayQty(p.qty, p.unit)}</td>
                 <td>${escapeHTML(p.unit || "")}</td>
                 <td>${money(p.amount)}</td>
+                <td>${escapeHTML(p.category || "Ingredients")}</td>
                 <td>
                     <button type="button" data-edit-purchase="${escapeHTML(p.id)}">Edit</button>
                     <button type="button" data-delete-purchase="${escapeHTML(p.id)}">Delete</button>
@@ -1250,10 +1258,10 @@ function renderPurchases() {
                 <td>${money(g.total)}</td>
             </tr>
             <tr id="${detailsId}" class="purchase-bill-details" hidden>
-                <td colspan="5">
+                <td colspan="6">
                     <div class="table-wrap">
                         <table>
-                            <thead><tr><th>Product / Ingredient</th><th>Purchased Qty</th><th>Unit</th><th>Amount (₹)</th><th>Action</th></tr></thead>
+                            <thead><tr><th>Product / Ingredient</th><th>Purchased Qty</th><th>Unit</th><th>Amount (₹)</th><th>Category</th><th>Action</th></tr></thead>
                             <tbody>${detailRows}</tbody>
                         </table>
                     </div>
@@ -1441,7 +1449,7 @@ function renderRecipes() {
             money(r.ingredientCost),
             money(r.costPerGram),
             money(r.sellingPrice),
-            `<button type="button" data-view-recipe="${r.id}">View</button> <button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
+            `<button type="button" data-view-recipe="${r.id}">View</button> <button type="button" data-edit-recipe="${r.id}">Edit</button> <button type="button" data-copy-recipe="${r.id}">Copy Recipe</button> <button type="button" data-delete-recipe="${r.id}">Delete</button>`
         ])
     );
 
@@ -1514,6 +1522,36 @@ function renderRecipes() {
             const submit = document.querySelector("#recipeForm button[type=submit]");
             if (submit) submit.textContent = "Update Recipe";
             document.getElementById("recipeForm").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+    });
+
+    // Copy a saved recipe into a new independent recipe draft. The source recipe is never edited.
+    document.querySelectorAll("[data-copy-recipe]").forEach(button => {
+        button.addEventListener("click", () => {
+            const source = db.recipes.find(r => r.id === button.dataset.copyRecipe);
+            if (!source) return;
+
+            // A null editing ID guarantees the form creates a new recipe instead of updating the source.
+            editingRecipeId = null;
+            document.getElementById("recipeName").value = `${source.name} Copy`;
+            document.getElementById("recipeWeight").value = number(source.finishedWeight);
+            document.getElementById("recipePrice").value = number(source.sellingPrice);
+            recipeRows.innerHTML = "";
+
+            (Array.isArray(source.ingredients) ? source.ingredients : []).forEach(ingredient => {
+                addRecipeRow({
+                    name: ingredient.name,
+                    qty: ingredient.qty
+                });
+            });
+
+            const submit = document.querySelector("#recipeForm button[type=submit]");
+            if (submit) submit.textContent = "Save Copied Recipe";
+
+            const result = document.getElementById("recipeResult");
+            if (result) result.innerHTML = `<p>Copied from <strong>${escapeHTML(source.name)}</strong>. Change the recipe name, weight, quantities or price, then save. The original recipe will remain unchanged.</p>`;
+
+            document.getElementById("recipeForm").scrollIntoView({ behavior: "smooth", block: "start" });
         });
     });
 
@@ -1716,15 +1754,44 @@ function showDashboardBreakdown(metric) {
         const purchases = [...db.purchases].sort((a, b) =>
             (b.date || "").localeCompare(a.date || "") || String(b.billNo || "").localeCompare(String(a.billNo || ""))
         );
+        // Legacy purchase rows without a category are treated as Ingredients, matching the purchase editor.
+        const ingredientTotal = purchases.reduce((sum, p) =>
+            sum + (String(p.category || "Ingredients").toLowerCase() === "ingredients" ? number(p.amount) : 0), 0);
+        const assetTotal = purchases.reduce((sum, p) =>
+            sum + (String(p.category || "Ingredients").toLowerCase() === "asset" ? number(p.amount) : 0), 0);
+        const purchaseTotal = ingredientTotal + assetTotal;
+        const selectedCategory = panel.dataset.purchaseCategory || "";
+        const visiblePurchases = selectedCategory
+            ? purchases.filter(p => String(p.category || "Ingredients").toLowerCase() === selectedCategory.toLowerCase())
+            : [];
+        const categoryCard = (category, title, amount) => `<button type="button" class="purchase-category-choice ${selectedCategory.toLowerCase() === category.toLowerCase() ? "selected" : ""}" data-purchase-category="${category}" style="text-align:left;cursor:pointer;background:${selectedCategory.toLowerCase() === category.toLowerCase() ? "#fff0e5" : "#fff"};border:1px solid ${selectedCategory.toLowerCase() === category.toLowerCase() ? "#8a4a2a" : "#efcdbd"};border-radius:16px;padding:14px;color:inherit"><strong>${title}</strong><h3 style="margin:8px 0 0">${money(amount)}</h3></button>`;
         panel.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
                 <h3>Total Purchase Breakdown</h3>
             </div>
-            ${table(["Date", "Bill Number", "Supplier", "Ingredient", "Quantity", "Purchase Amount"], purchases.map(p => [
-                escapeHTML(p.date || "—"), escapeHTML(p.billNo || "—"), escapeHTML(p.supplier || "—"),
-                escapeHTML(p.name || "—"), `${number(p.qty).toLocaleString("en-IN")} ${escapeHTML(p.unit || "")}`, money(p.amount)
-            ]))}
+            <div class="purchase-category-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0 18px">
+                ${categoryCard("Ingredients", "1. Ingredients", ingredientTotal)}
+                ${categoryCard("Asset", "2. Asset", assetTotal)}
+                <button type="button" class="purchase-category-choice ${selectedCategory === "all" ? "selected" : ""}" data-purchase-category="all" style="text-align:left;cursor:pointer;background:${selectedCategory === "all" ? "#fff0e5" : "#fff"};border:1px solid ${selectedCategory === "all" ? "#8a4a2a" : "#efcdbd"};border-radius:16px;padding:14px;color:inherit"><strong>Total Purchases</strong><h3 style="margin:8px 0 0">${money(purchaseTotal)}</h3></button>
+            </div>
+            <div class="purchase-breakdown-table">
+                ${selectedCategory ? table(["Date", "Bill Number", "Supplier", "Category", "Ingredient / Item", "Quantity", "Purchase Amount"], (selectedCategory === "all" ? purchases : visiblePurchases).map(p => [
+                    escapeHTML(p.date || "—"), escapeHTML(p.billNo || "—"), escapeHTML(p.supplier || "—"),
+                    escapeHTML(p.category || "Ingredients"), escapeHTML(p.name || "—"), `${number(p.qty).toLocaleString("en-IN")} ${escapeHTML(p.unit || "")}`, money(p.amount)
+                ])) : "<p style=\"color:#806f66;margin:8px 0\">Select Ingredients, Asset, or Total Purchases to view details.</p>"}
+            </div>
         `;
+        panel.querySelectorAll("[data-purchase-category]").forEach(button => {
+            button.addEventListener("click", () => {
+                const nextCategory = button.dataset.purchaseCategory;
+                panel.dataset.purchaseCategory = nextCategory === "all" ? "all" : nextCategory;
+                panel.dataset.metric = "";
+                showDashboardBreakdown("purchases");
+            });
+        });
+    } else if (metric === "stock") {
+        const stock = getStockLedger();
+        panel.innerHTML = `<h3>Ingredient Stock Details</h3>${table(["Ingredient","Unit","Purchased","Used","Wastage","Balance","Stock Value"], stock.map(item => [escapeHTML(item.name), escapeHTML(item.unit), item.purchasedQty.toLocaleString("en-IN"), item.usedQty.toLocaleString("en-IN"), item.wastedQty.toLocaleString("en-IN"), item.remainingQty.toLocaleString("en-IN"), money(item.remainingValue)]))}`;
     } else {
         const grouped = new Map();
         db.sales.forEach(sale => {
@@ -1772,7 +1839,7 @@ function renderDashboard() {
 
     const salesCard = document.getElementById("dashSales")?.closest(".card");
     const purchaseCard = document.getElementById("dashPurchase")?.closest(".card");
-    [[salesCard, "sales", "Click to view category and product-wise sales"], [purchaseCard, "purchases", "Click to view purchase details"]].forEach(([card, metric, title]) => {
+    [[salesCard, "sales", "Click to view category and product-wise sales"], [purchaseCard, "purchases", "Click to view purchase details"], [document.getElementById("dashStock")?.closest(".card"), "stock", "Click to view ingredient stock details"]].forEach(([card, metric, title]) => {
         if (!card) return;
         card.title = title; card.setAttribute("role", "button"); card.setAttribute("tabindex", "0");
         card.onclick = () => showDashboardBreakdown(metric);
@@ -1841,6 +1908,32 @@ function renderReports() {
         
     `;
 }
+
+function refreshAllData() {
+    // Re-read the most recent local snapshot and redraw all derived views.
+    try {
+        const raw = localStorage.getItem(DB_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            db = {
+                purchases: Array.isArray(parsed.purchases) ? parsed.purchases : db.purchases,
+                recipes: Array.isArray(parsed.recipes) ? parsed.recipes : db.recipes,
+                productions: Array.isArray(parsed.productions) ? parsed.productions : db.productions,
+                sales: Array.isArray(parsed.sales) ? parsed.sales : db.sales,
+                wastage: Array.isArray(parsed.wastage) ? parsed.wastage : db.wastage
+            };
+        }
+    } catch (error) { console.error("Refresh failed; kept current data", error); }
+    renderAll();
+    if (cloudReady && window.firebaseDb && window.firebaseAuth?.currentUser) {
+        const user = window.firebaseAuth.currentUser;
+        window.firebaseDb.collection("users").doc(user.uid).collection("appData").doc("main").get()
+            .then(snap => { if (snap.exists) { const data = snap.data() || {}; db = { purchases:data.purchases||[], recipes:data.recipes||[], productions:data.productions||[], sales:data.sales||[], wastage:data.wastage||[] }; localStorage.setItem(DB_KEY, JSON.stringify(db)); renderAll(); const status=document.getElementById("cloudStatus"); if(status) status.textContent="Refreshed from cloud ✓"; } })
+            .catch(error => { console.error(error); const status=document.getElementById("cloudStatus"); if(status) status.textContent="Refresh failed — showing saved data"; });
+    }
+}
+
+document.getElementById("refreshAllButton")?.addEventListener("click", refreshAllData);
 
 function renderAll() {
     renderPurchases();

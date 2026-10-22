@@ -18,6 +18,9 @@
 #loginMessage { min-height:22px; font-size:14px; }
 .cloud-toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:8px 16px; font-size:13px; }
 #logoutButton { border:0; border-radius:6px; padding:7px 12px; cursor:pointer; }
+.refresh-all-button{border:1px solid #e4c8b7;background:#fffaf5;color:#482317;border-radius:9px;padding:8px 11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.refresh-all-button:hover{background:#ffe7ed}
+@media(max-width:650px){.refresh-all-button{font-size:12px;padding:7px 9px}}
 </style>
 <style>.section-search{display:block;width:min(100%,520px);box-sizing:border-box;margin:12px 0 16px;padding:10px 12px;border:1px solid #d8c9bf;border-radius:8px;font-size:15px;background:#fff}</style>
 </head>
@@ -62,6 +65,7 @@
                 <p>Welcome to NAINIKA BAKES <span class="header-tagline">| Manage your bakery business with ease 💗</span></p>
             </div>
             <div class="header-right">
+                <button type="button" id="refreshAllButton" class="refresh-all-button" title="Refresh all dashboard data">↻ Refresh All</button>
                 <span id="today"></span>
                 <img class="header-brand-logo" src="nainika-logo.png" alt="Nainika Homemade Bakes logo">
             </div>

@@ -724,3 +724,38 @@ h1,
         word-break: normal;
     }
 }
+
+/* Final mobile money and dashboard card fixes */
+@media (max-width:650px) {
+  .dashboard-stat-cards { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .dashboard-stat-cards .card { min-width:0; width:100%; overflow:hidden; }
+  .dashboard-stat-cards .stat-copy { min-width:0; width:100%; flex:1 1 auto; }
+  .dashboard-stat-cards .stat-copy h2 { font-size:clamp(13px,3.6vw,17px) !important; white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; letter-spacing:-.25px; }
+  .dashboard-stat-cards .card:nth-child(1), .dashboard-stat-cards .card:nth-child(2) { flex-direction:column; align-items:flex-start; }
+  .dashboard-stat-cards .stat-icon { flex:0 0 34px; width:34px; height:34px; }
+}
+@media (max-width:360px) { .dashboard-stat-cards .stat-copy h2 { font-size:12px !important; } }
+
+/* FINAL FIX: hide the actual dashboard arrow element (.stat-arrow) at every screen size.
+   Keep the whole card clickable, but prevent the browser focus ring from remaining around it. */
+#dashboard .dashboard-stat-cards .stat-arrow,
+#dashboard .dashboard-stat-cards .stat-arrow,
+#dashboard .dashboard-stat-cards button.stat-arrow {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    flex: 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+#dashboard .dashboard-stat-cards .card[role="button"],
+#dashboard .dashboard-stat-cards .card[role="button"]:focus,
+#dashboard .dashboard-stat-cards .card[role="button"]:focus-visible,
+#dashboard .dashboard-stat-cards .card[role="button"]:active {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+#dashboard .dashboard-stat-cards .card[role="button"]:focus-visible {
+    box-shadow: 0 6px 20px rgba(75,36,24,.055) !important;
+}
