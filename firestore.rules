@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Replace OWNER_FIREBASE_UID with the UID shown for your own account
+    // in Firebase Console > Authentication > Users. Do not use allow read, write: if true.
+    match /users/{userId}/appData/{document=**} {
+      allow read, write: if request.auth != null
+                        && request.auth.uid == "cXkgPOZn3lML3MIKkMozsobrB4j1"
+                        && userId == request.auth.uid;
+    }
+  }
+}
