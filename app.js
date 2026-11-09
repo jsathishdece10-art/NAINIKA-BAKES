@@ -565,8 +565,21 @@ function addPurchaseItemRow(initial = {}) {
     row.className = "purchase-item-row";
     row.style.cssText = "display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) minmax(120px,1fr) minmax(130px,1fr) minmax(140px,1.3fr);gap:8px;margin-bottom:8px;align-items:center;min-width:850px;";
     row.innerHTML = `
-        <input type="text" class="item-name" placeholder="Ingredient / Item" required>
-        <input type="number" class="item-qty" min="0.001" step="any" placeholder="Quantity" required>
+    <input
+        type="text"
+        class="item-name"
+        placeholder="Ingredient / Item"
+        list="ingredientSuggestions"
+        required
+    >
+
+    <datalist id="ingredientSuggestions">
+        ${getIngredientSuggestions()
+            .map(item => `<option value="${item}">`)
+            .join("")}
+    </datalist>
+
+    <input type="number" class="item-qty" min="0.001" step="any" placeholder="Quantity" required>
         <select class="item-unit" required>
             <option value="g">Grams (g)</option><option value="kg">Kg</option>
             <option value="ml">ML</option><option value="L">Litres</option>
