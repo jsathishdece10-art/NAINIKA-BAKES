@@ -552,6 +552,13 @@ function updatePurchaseTotal() {
     });
     purchaseGrandTotal.textContent = total.toFixed(2);
 }
+function getIngredientSuggestions() {
+    return [...new Set(
+        db.purchases
+            .map(p => p.name)
+            .filter(Boolean)
+    )];
+}
 
 function addPurchaseItemRow(initial = {}) {
     const row = document.createElement("div");
